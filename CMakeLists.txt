@@ -15,6 +15,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 include(CMakePackageConfigHelpers)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Network Sql)
+qt_standard_project_setup(REQUIRES 6.7)
 
 add_library(caelestia-headers INTERFACE)
 target_include_directories(caelestia-headers INTERFACE

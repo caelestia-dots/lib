@@ -1,7 +1,5 @@
 find_package(Qt6 REQUIRED COMPONENTS Test)
 
-set(CMAKE_AUTOMOC ON)
-
 function(create_test module name)
     set(target_name "test-${module}-${name}")
     set(exec_name "test_${module}_${name}")
