@@ -16,7 +16,8 @@ QHash<QString, ComponentInfo> installedComponents() {
         QStandardPaths::GenericDataLocation, u"caelestia/components"_s, QStandardPaths::LocateDirectory);
 
     for (const auto& dir : dirs) {
-        for (const auto& file : QDir(dir).entryInfoList({ u"*.ini"_s }, QDir::Files)) {
+        const auto files = QDir(dir).entryInfoList({ u"*.ini"_s }, QDir::Files);
+        for (const auto& file : files) {
             const auto name = file.completeBaseName();
             if (components.contains(name))
                 continue;
