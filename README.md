@@ -9,6 +9,7 @@ A shared C++ library for [Caelestia](https://github.com/caelestia-dots).
 | `config`    | Basic access to `~/.config/caelestia/config.json` + paths |
 | `ipc`       | CLI to shell requests over a local socket                 |
 | `media`     | Image/video colour analysis                               |
+| `record`    | Screen recorder lifecycle and state                       |
 | `scheme`    | Material 3 scheme generation                              |
 | `theme`     | Apply schemes to apps                                     |
 | `utils`     | File and blob caches, component registry                  |
