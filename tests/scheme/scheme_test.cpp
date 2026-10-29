@@ -148,7 +148,8 @@ private slots:
             QCOMPARE(data.name, name);
             QCOMPARE(data.flavour, flavour);
             QCOMPARE(data.mode, mode);
-            for (const auto colour : allColours(data.colours))
+            const auto all = allColours(data.colours);
+            for (const auto colour : all)
                 QVERIFY2(colour.alpha() == 0xFF, tag.constData());
         }
     }

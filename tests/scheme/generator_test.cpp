@@ -48,7 +48,8 @@ private slots:
 
     void darkMode() {
         const auto colours = generate(k_sourceColour, DynamicVariant::TonalSpot, Mode::Dark);
-        for (const auto colour : allColours(colours))
+        const auto all = allColours(colours);
+        for (const auto colour : all)
             QCOMPARE(colour.alpha(), 0xFF);
         QVERIFY(colours.background.red() < 0x80);
         QVERIFY(colours.onBackground.red() > 0x80);
@@ -56,7 +57,8 @@ private slots:
 
     void lightMode() {
         const auto colours = generate(k_sourceColour, DynamicVariant::TonalSpot, Mode::Light);
-        for (const auto colour : allColours(colours))
+        const auto all = allColours(colours);
+        for (const auto colour : all)
             QCOMPARE(colour.alpha(), 0xFF);
         QVERIFY(colours.background.red() > 0x80);
         QVERIFY(colours.onBackground.red() < 0x80);
@@ -90,7 +92,8 @@ private slots:
         QFETCH(const Mode, mode);
 
         const auto colours = generate(k_sourceColour, variant, mode);
-        for (const auto colour : allColours(colours))
+        const auto all = allColours(colours);
+        for (const auto colour : all)
             QCOMPARE(colour.alpha(), 0xFF);
     }
 
