@@ -29,6 +29,7 @@ if(BUILD_TESTING)
 endif()
 
 add_subdirectory(src/config)
+add_subdirectory(src/ipc)
 add_subdirectory(src/utils)
 add_subdirectory(src/media)
 add_subdirectory(src/scheme)
@@ -50,6 +51,7 @@ target_link_libraries(caelestia
         Qt::Gui
     PRIVATE
         caelestia-config
+        caelestia-ipc
         caelestia-media
         caelestia-scheme
         caelestia-theme

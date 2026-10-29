@@ -7,6 +7,7 @@ A shared C++ library for [Caelestia](https://github.com/caelestia-dots).
 | Module      | Contains                                                  |
 | ----------- | --------------------------------------------------------- |
 | `config`    | Basic access to `~/.config/caelestia/config.json` + paths |
+| `ipc`       | CLI to shell requests over a local socket                 |
 | `media`     | Image/video colour analysis                               |
 | `scheme`    | Material 3 scheme generation                              |
 | `theme`     | Apply schemes to apps                                     |

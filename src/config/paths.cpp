@@ -52,6 +52,10 @@ QString ConfigPaths::stateDir() {
     return QStandardPaths::writableLocation(QStandardPaths::GenericStateLocation) + u"/caelestia"_s;
 }
 
+QString ConfigPaths::runtimeDir() {
+    return QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation) + u"/caelestia"_s;
+}
+
 QString ConfigPaths::customSchemesDir() {
     return Config::configDir() + u"/schemes"_s;
 }

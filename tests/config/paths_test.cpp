@@ -28,11 +28,13 @@ private slots:
         qputenv("HOME", m_home.toUtf8());
         qputenv("XDG_CONFIG_HOME", (m_root.path() + u"/config"_s).toUtf8());
         qputenv("XDG_STATE_HOME", (m_root.path() + u"/state"_s).toUtf8());
+        qputenv("XDG_RUNTIME_DIR", m_root.path().toUtf8());
         QCOMPARE(QDir::homePath(), m_home);
     }
 
     void staticDirs() {
         QCOMPARE(ConfigPaths::stateDir(), m_root.path() + u"/state/caelestia"_s);
+        QCOMPARE(ConfigPaths::runtimeDir(), m_root.path() + u"/caelestia"_s);
         QCOMPARE(ConfigPaths::customSchemesDir(), Config::configDir() + u"/schemes"_s);
         QCOMPARE(ConfigPaths::customThemesDir(), Config::configDir() + u"/themes"_s);
     }

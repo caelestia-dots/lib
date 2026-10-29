@@ -24,6 +24,7 @@ public:
     void setRecordingsDir(const QString& dir) const;
 
     [[nodiscard]] static QString stateDir();
+    [[nodiscard]] static QString runtimeDir();
     [[nodiscard]] static QString customSchemesDir();
     [[nodiscard]] static QString customThemesDir();
 
