@@ -30,8 +30,8 @@ public:
     [[nodiscard]] static QString keyFor(QStringView key);
     [[nodiscard]] static QString keyForPath(const QString& path, QStringView extraInfo = {});
 
-    void store(const QString& key, const QByteArray& data);
-    void store(const QString& key, Producer producer);
+    QFuture<bool> store(const QString& key, const QByteArray& data);
+    QFuture<bool> store(const QString& key, Producer producer);
     void remove(const QString& key);
     void clear();
 

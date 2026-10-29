@@ -18,7 +18,7 @@ using Qt::StringLiterals::operator""_s;
 
 namespace {
 
-template <typename Read> auto lookupOn(QObject* worker, Read read) {
+template <typename Read> auto runOn(QObject* worker, Read read) {
     QPromise<std::invoke_result_t<Read>> promise;
     promise.start();
     auto future = promise.future();
@@ -76,28 +76,22 @@ QString Cache::keyForPath(const QString& path, QStringView extraInfo) {
         QString::number(info.size()), extraInfo));
 }
 
-void Cache::store(const QString& key, const QByteArray& data) {
+QFuture<bool> Cache::store(const QString& key, const QByteArray& data) {
     if (key.isEmpty())
-        return;
+        return QtFuture::makeReadyValueFuture(false);
 
-    QMetaObject::invokeMethod(
-        m_worker,
-        [worker = m_worker, key, data] {
-            worker->store(key, data);
-        },
-        Qt::QueuedConnection);
+    return runOn(m_worker, [worker = m_worker, key, data] {
+        return worker->store(key, data);
+    });
 }
 
-void Cache::store(const QString& key, Producer producer) {
+QFuture<bool> Cache::store(const QString& key, Producer producer) {
     if (key.isEmpty())
-        return;
+        return QtFuture::makeReadyValueFuture(false);
 
-    QMetaObject::invokeMethod(
-        m_worker,
-        [worker = m_worker, key, producer = std::move(producer)] {
-            worker->store(key, producer);
-        },
-        Qt::QueuedConnection);
+    return runOn(m_worker, [worker = m_worker, key, producer = std::move(producer)] {
+        return worker->store(key, producer);
+    });
 }
 
 void Cache::remove(const QString& key) {
@@ -133,7 +127,7 @@ QString FileCache::pathFor(const QString& key) const {
 }
 
 QFuture<QUrl> FileCache::lookup(const QString& key) const {
-    return lookupOn(worker(), [worker = fileWorker(), key] {
+    return runOn(worker(), [worker = fileWorker(), key] {
         return worker->read(key);
     });
 }
@@ -160,7 +154,7 @@ BlobCache::BlobCache(const QString& name, qint64 maxSize, int version)
     : Cache(new BlobCacheWorker(cacheDir() + u'/' + name + u".db"_s, maxSize, version)) {}
 
 QFuture<QByteArray> BlobCache::lookup(const QString& key) const {
-    return lookupOn(worker(), [worker = blobWorker(), key] {
+    return runOn(worker(), [worker = blobWorker(), key] {
         return worker->read(key);
     });
 }

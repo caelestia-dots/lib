@@ -100,28 +100,29 @@ void CacheWorker::touch(const QString& key) {
     q.exec();
 }
 
-void CacheWorker::store(const QString& key, const Cache::Producer& producer) {
+bool CacheWorker::store(const QString& key, const Cache::Producer& producer) {
     if (contains(key))
-        return;
+        return true;
 
     const auto data = producer();
     if (data.isNull()) {
         qCWarning(lcCache).noquote() << "Producer returned no data for" << key;
-        return;
+        return false;
     }
-    store(key, data);
+    return store(key, data);
 }
 
-void CacheWorker::store(const QString& key, const QByteArray& data) {
+bool CacheWorker::store(const QString& key, const QByteArray& data) {
     if (data.size() > m_maxSize)
-        return;
+        return false;
 
     if (!write(key, data))
-        return;
+        return false;
 
     index(key, data.size());
     qCDebug(lcCache).noquote() << "Stored" << key << data.size() << "bytes";
     evict();
+    return true;
 }
 
 void CacheWorker::remove(const QString& key) {

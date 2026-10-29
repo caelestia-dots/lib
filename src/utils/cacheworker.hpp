@@ -21,8 +21,8 @@ public:
 
     void open();
     void touch(const QString& key);
-    void store(const QString& key, const QByteArray& data);
-    void store(const QString& key, const Cache::Producer& producer);
+    bool store(const QString& key, const QByteArray& data);
+    bool store(const QString& key, const Cache::Producer& producer);
     void remove(const QString& key);
     void clear();
 
