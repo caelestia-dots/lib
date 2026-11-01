@@ -1,6 +1,5 @@
 #include <qdir.h>
 #include <qfileinfo.h>
-#include <qprocess.h>
 #include <qstandardpaths.h>
 
 #include <algorithm>
@@ -8,6 +7,7 @@
 #include <cstdlib>
 
 #include "caelestia/theme/theme.hpp"
+#include "caelestia/utils/process.hpp"
 #include "util.hpp"
 
 namespace caelestia::theme {
@@ -84,7 +84,7 @@ void syncPapirus(QColor primary) {
         }))
         return;
 
-    QProcess::startDetached(u"sudo"_s, { u"-n"_s, u"papirus-folders"_s, u"-C"_s, papirusColour(primary), u"-u"_s });
+    utils::execDetached(u"sudo"_s, { u"-n"_s, u"papirus-folders"_s, u"-C"_s, papirusColour(primary), u"-u"_s });
 }
 
 void dconfWrite(const QString& key, const QString& value) {

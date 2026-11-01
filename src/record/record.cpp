@@ -9,13 +9,13 @@
 #include <qjsonobject.h>
 #include <qlockfile.h>
 #include <qloggingcategory.h>
-#include <qprocess.h>
 #include <qsavefile.h>
 #include <qthread.h>
 
 #include <csignal>
 
 #include "caelestia/config/paths.hpp"
+#include "caelestia/utils/process.hpp"
 
 namespace caelestia::record {
 
@@ -211,17 +211,9 @@ bool start(const Options& options) {
 
     QDir().mkpath(QFileInfo(options.output).absolutePath());
 
-    QProcess proc;
-    proc.setProgram(k_recorder.toString());
-    proc.setArguments(arguments(options));
-    proc.setStandardInputFile(QProcess::nullDevice());
-    proc.setStandardOutputFile(QProcess::nullDevice());
-    proc.setStandardErrorFile(QProcess::nullDevice());
-    proc.setUnixProcessParameters(QProcess::UnixProcessFlag::CloseFileDescriptors);
-
     qint64 pid = 0;
-    if (!proc.startDetached(&pid)) {
-        qCWarning(lcRecord) << "Unable to start" << k_recorder << proc.errorString();
+    if (!utils::execDetached(k_recorder.toString(), arguments(options), &pid)) {
+        qCWarning(lcRecord) << "Unable to start" << k_recorder;
         return false;
     }
 

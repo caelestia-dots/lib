@@ -12,6 +12,7 @@ target_link_libraries(caelestia-theme
     PUBLIC
         caelestia-headers
         caelestia-config
+        caelestia-utils
         caelestia-scheme
         Qt::Core
         Qt::Network
