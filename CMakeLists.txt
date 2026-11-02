@@ -28,6 +28,13 @@ if(BUILD_TESTING)
     add_compile_definitions(CAELESTIA_TESTING)
 endif()
 
+option(BUILD_QML "Build the QML modules" ON)
+if(BUILD_QML)
+    find_package(Qt6 REQUIRED COMPONENTS Qml)
+    set(INSTALL_QMLDIR "${CMAKE_INSTALL_LIBDIR}/qt6/qml" CACHE STRING "QML install dir")
+    set(QT_QML_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/qml")
+endif()
+
 add_subdirectory(src/config)
 add_subdirectory(src/ipc)
 add_subdirectory(src/utils)

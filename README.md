@@ -7,7 +7,7 @@ A shared C++ library for [Caelestia](https://github.com/caelestia-dots).
 | Module      | Contains                                                  |
 | ----------- | --------------------------------------------------------- |
 | `config`    | Basic access to `~/.config/caelestia/config.json` + paths |
-| `ipc`       | CLI to shell requests over a local socket                 |
+| `ipc`       | CLI to shell requests over a local socket + QML module    |
 | `media`     | Image/video colour analysis                               |
 | `record`    | Screen recorder lifecycle and state                       |
 | `scheme`    | Material 3 scheme generation                              |
@@ -27,6 +27,10 @@ cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
 cmake --build build
 sudo cmake --install build
 ```
+
+The `ipc` module also installs a `Caelestia.Ipc` QML module exposing the
+server side. The QML module is on by default and can be disabled with
+`-DBUILD_QML=OFF`. The install location is controlled by `INSTALL_QMLDIR`.
 
 > [!IMPORTANT]
 > The `theme` module has 2 targets which require access to `sudo`. A sudoers file

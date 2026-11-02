@@ -1,1 +1,10 @@
 create_test(ipc ipc config)
+
+if(BUILD_QML)
+    add_executable(test-ipc-qml qml_test.cpp)
+    set_target_properties(test-ipc-qml PROPERTIES OUTPUT_NAME test_ipc_qml)
+    target_compile_definitions(test-ipc-qml PRIVATE CAELESTIA_QML_DIR="${QT_QML_OUTPUT_DIRECTORY}")
+    target_link_libraries(test-ipc-qml PRIVATE caelestia Qt::Qml Qt::Test)
+    add_dependencies(test-ipc-qml caelestia-ipc-qml)
+    add_test(NAME ipc_qml COMMAND test_ipc_qml)
+endif()
