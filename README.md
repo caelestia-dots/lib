@@ -12,7 +12,7 @@ A shared C++ library for [Caelestia](https://github.com/caelestia-dots).
 | `record`    | Screen recorder lifecycle and state                       |
 | `scheme`    | Material 3 scheme generation                              |
 | `theme`     | Apply schemes to apps                                     |
-| `utils`     | File and blob caches, component registry                  |
+| `utils`     | File and blob caches, component registry, Hyprland socket |
 | `wallpaper` | Current wallpaper state and wallpaper-driven schemes      |
 
 ## Dependencies
