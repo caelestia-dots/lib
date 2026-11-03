@@ -33,7 +33,13 @@ struct Screenshot {
     bool annotate;
 };
 
-using Request = std::variant<Release, PickRegion, Screenshot>;
+struct Annotate {
+    static constexpr auto k_name = "annotate"_L1;
+
+    QString file;
+};
+
+using Request = std::variant<Release, PickRegion, Screenshot, Annotate>;
 
 [[nodiscard]] QString socketPath();
 [[nodiscard]] QString lockPath();

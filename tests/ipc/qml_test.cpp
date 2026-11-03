@@ -23,6 +23,7 @@ import Caelestia.Ipc
 QtObject {
     property bool region
     property bool annotate
+    property string annotated
 
     Component.onCompleted: {
         IpcServer.pickRegionRequested.connect(request => request.respond(Qt.rect(10, 20, 300, 200)));
@@ -30,6 +31,10 @@ QtObject {
             region = request.region;
             annotate = request.annotate;
             request.respond("/tmp/shot.png");
+        });
+        IpcServer.annotateRequested.connect(request => {
+            annotated = request.file;
+            request.respond(request.file + ".edited.png");
         });
     }
 }
@@ -88,6 +93,18 @@ private slots:
         QCOMPARE(std::get<QString>(result), QStringLiteral("/tmp/shot.png"));
         QVERIFY(m_shell->property("region").toBool());
         QVERIFY(!m_shell->property("annotate").toBool());
+    }
+
+    void annotateThroughQml() {
+        auto future = std::async(std::launch::async, [] {
+            return ipc::annotate(QStringLiteral("/tmp/in.png"));
+        });
+        QTRY_VERIFY(future.wait_for(std::chrono::seconds(0)) == std::future_status::ready);
+
+        const auto result = future.get();
+        QVERIFY(std::holds_alternative<QString>(result));
+        QCOMPARE(std::get<QString>(result), QStringLiteral("/tmp/in.png.edited.png"));
+        QCOMPARE(m_shell->property("annotated").toString(), QStringLiteral("/tmp/in.png"));
     }
 };
 

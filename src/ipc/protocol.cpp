@@ -59,6 +59,10 @@ QByteArray encode(const Request& request) {
             obj[u"region"] = sc.region;
             obj[u"annotate"] = sc.annotate;
         },
+        [&obj](const Annotate& an) {
+            obj[u"method"] = Annotate::k_name;
+            obj[u"file"] = an.file;
+        },
     };
     std::visit(overloads, request);
     return toLine(obj);
@@ -97,6 +101,9 @@ std::optional<Request> decodeRequest(const QByteArray& line) {
             .annotate = obj.value(u"annotate").toBool(),
         };
     }
+
+    if (method == Annotate::k_name)
+        return Annotate{ .file = obj.value(u"file").toString() };
 
     return std::nullopt;
 }

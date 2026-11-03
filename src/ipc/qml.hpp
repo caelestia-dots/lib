@@ -26,6 +26,13 @@ struct ScreenshotRequestForeign {
     QML_UNCREATABLE("Created by IpcServer when a client requests a screenshot")
 };
 
+struct AnnotateRequestForeign {
+    Q_GADGET
+    QML_FOREIGN(caelestia::ipc::AnnotateRequest)
+    QML_NAMED_ELEMENT(AnnotateRequest)
+    QML_UNCREATABLE("Created by IpcServer when a client requests an annotation")
+};
+
 struct ServerForeign {
     Q_GADGET
     QML_FOREIGN(caelestia::ipc::Server)

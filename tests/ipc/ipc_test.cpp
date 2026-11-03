@@ -32,6 +32,7 @@ private:
     std::unique_ptr<ipc::Server> m_server;
     QPointer<ipc::PickRegionRequest> m_request;
     QPointer<ipc::ScreenshotRequest> m_screenshot;
+    QPointer<ipc::AnnotateRequest> m_annotate;
 
     [[nodiscard]] QString socketPath() const { return m_root.filePath(u"caelestia/shell.sock"_s); }
 
@@ -44,6 +45,12 @@ private:
     [[nodiscard]] static Future<QString> shoot(bool region, bool annotate) {
         return std::async(std::launch::async, [region, annotate] {
             return ipc::screenshot(region, annotate);
+        });
+    }
+
+    [[nodiscard]] static Future<QString> annotate(const QString& file) {
+        return std::async(std::launch::async, [file] {
+            return ipc::annotate(file);
         });
     }
 
@@ -72,6 +79,9 @@ private:
         connect(server.get(), &ipc::Server::screenshotRequested, this, [this](ipc::ScreenshotRequest* request) {
             m_screenshot = request;
         });
+        connect(server.get(), &ipc::Server::annotateRequested, this, [this](ipc::AnnotateRequest* request) {
+            m_annotate = request;
+        });
         return server;
     }
 
@@ -92,6 +102,7 @@ private slots:
         m_server.reset();
         m_request.clear();
         m_screenshot.clear();
+        m_annotate.clear();
     }
 
     void failsWithoutServer() {
@@ -254,6 +265,65 @@ private slots:
     void releaseRejectsPendingScreenshot() {
         auto future = shoot(false, false);
         QTRY_VERIFY(m_screenshot);
+
+        QLocalSocket client;
+        client.connectToServer(socketPath());
+        QVERIFY(client.waitForConnected());
+        client.write("{\"method\":\"release\"}\n");
+
+        QCOMPARE(errorOf(await(future)), ipc::Error::Cancelled);
+        QTRY_VERIFY(!m_server->isListening());
+    }
+
+    void annotateRespondReturnsFile() {
+        auto future = annotate(u"/tmp/in.png"_s);
+        QTRY_VERIFY(m_annotate);
+        QCOMPARE(m_annotate->file(), u"/tmp/in.png"_s);
+
+        m_annotate->respond(u"/tmp/out.png"_s);
+        QTRY_VERIFY(m_annotate.isNull());
+
+        QCOMPARE(std::get<QString>(await(future)), u"/tmp/out.png"_s);
+    }
+
+    void annotateRejectReportsCancelled() {
+        auto future = annotate(u"/tmp/in.png"_s);
+        QTRY_VERIFY(m_annotate);
+
+        m_annotate->reject();
+        QTRY_VERIFY(m_annotate.isNull());
+
+        QCOMPARE(errorOf(await(future)), ipc::Error::Cancelled);
+    }
+
+    void secondAnnotateIsBusy() {
+        auto first = annotate(u"/tmp/in.png"_s);
+        QTRY_VERIFY(m_annotate);
+
+        auto second = annotate(u"/tmp/in.png"_s);
+        QCOMPARE(errorOf(await(second)), ipc::Error::Busy);
+
+        m_annotate->reject();
+        QCOMPARE(errorOf(await(first)), ipc::Error::Cancelled);
+    }
+
+    void annotateClientDisconnectCancels() {
+        QLocalSocket client;
+        client.connectToServer(socketPath());
+        QVERIFY(client.waitForConnected());
+        client.write("{\"method\":\"annotate\",\"file\":\"/tmp/in.png\"}\n");
+        QTRY_VERIFY(m_annotate);
+        QCOMPARE(m_annotate->file(), u"/tmp/in.png"_s);
+
+        const QSignalSpy cancelled(m_annotate.data(), &ipc::Request::cancelled);
+        client.disconnectFromServer();
+        QTRY_COMPARE(cancelled.size(), 1);
+        QTRY_VERIFY(m_annotate.isNull());
+    }
+
+    void releaseRejectsPendingAnnotate() {
+        auto future = annotate(u"/tmp/in.png"_s);
+        QTRY_VERIFY(m_annotate);
 
         QLocalSocket client;
         client.connectToServer(socketPath());

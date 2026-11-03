@@ -70,6 +70,18 @@ void ScreenshotRequest::respond(const QString& file) {
     reply(file);
 }
 
+AnnotateRequest::AnnotateRequest(QString file, QLocalSocket* socket)
+    : Request(socket)
+    , m_file(std::move(file)) {}
+
+[[nodiscard]] QString AnnotateRequest::file() const {
+    return m_file;
+}
+
+void AnnotateRequest::respond(const QString& file) {
+    reply(file);
+}
+
 Server::Server(QObject* parent)
     : QObject(parent)
     , m_lock(protocol::lockPath()) {
@@ -145,6 +157,15 @@ void Server::dispatch(QLocalSocket* socket) {
             m_pendingScreenshot = new ScreenshotRequest(sc.region, sc.annotate, socket);
             emit screenshotRequested(m_pendingScreenshot);
         },
+        [this, socket](const protocol::Annotate& an) {
+            if (m_pendingAnnotate) {
+                answer(socket, Error::Busy);
+                return;
+            }
+
+            m_pendingAnnotate = new AnnotateRequest(an.file, socket);
+            emit annotateRequested(m_pendingAnnotate);
+        },
     };
     std::visit(handlers, *request);
 }
@@ -155,6 +176,8 @@ void Server::release(QLocalSocket* socket) {
         m_pendingPick->reject();
     if (m_pendingScreenshot)
         m_pendingScreenshot->reject();
+    if (m_pendingAnnotate)
+        m_pendingAnnotate->reject();
     m_lock.unlock();
 
     socket->disconnectFromServer();

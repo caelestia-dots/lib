@@ -5,6 +5,7 @@
 #include <qobject.h>
 #include <qpointer.h>
 #include <qrect.h>
+#include <qstring.h>
 
 #include "caelestia/ipc/common.hpp"
 
@@ -64,6 +65,24 @@ private:
     bool m_annotate;
 };
 
+class AnnotateRequest : public Request {
+    Q_OBJECT
+
+    Q_PROPERTY(QString file READ file CONSTANT)
+
+public:
+    [[nodiscard]] QString file() const;
+
+    Q_INVOKABLE void respond(const QString& file);
+
+private:
+    friend class Server;
+
+    AnnotateRequest(QString file, QLocalSocket* socket);
+
+    QString m_file;
+};
+
 class Server : public QObject {
     Q_OBJECT
 
@@ -75,6 +94,7 @@ public:
 signals:
     void pickRegionRequested(caelestia::ipc::PickRegionRequest* request);
     void screenshotRequested(caelestia::ipc::ScreenshotRequest* request);
+    void annotateRequested(caelestia::ipc::AnnotateRequest* request);
     void released();
 
 private:
@@ -82,6 +102,7 @@ private:
     QLocalServer m_server;
     QPointer<PickRegionRequest> m_pendingPick;
     QPointer<ScreenshotRequest> m_pendingScreenshot;
+    QPointer<AnnotateRequest> m_pendingAnnotate;
 
     static void releaseExisting();
     void accept();
