@@ -243,11 +243,18 @@ void Capture::ext_image_copy_capture_frame_v1_failed(uint32_t reason) {
 }
 
 void Capture::fail(const char* reason) {
+    if (m_done)
+        return;
+
     qCWarning(lcScreenshot) << "Capture failed:" << reason;
     finish({});
 }
 
 void Capture::finish(const QImage& image) {
+    if (m_done)
+        return;
+
+    m_done = true;
     m_promise.addResult(image);
     m_promise.finish();
     deleteLater();

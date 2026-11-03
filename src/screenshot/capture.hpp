@@ -98,6 +98,7 @@ private:
     int m_width = 0;
     int m_height = 0;
     QList<uint32_t> m_formats;
+    bool m_done = false;
     uint32_t m_format = 0;
     uint32_t m_transform = 0;
 };
