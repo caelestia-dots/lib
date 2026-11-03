@@ -58,7 +58,7 @@ macro(caelestia_setup_warnings)
         QT_NO_CAST_FROM_BYTEARRAY
     )
 
-    add_compile_options(
+    set(cxx_warnings
         -Wall -Wextra -Wpedantic -Wshadow -Wconversion
         -Wold-style-cast -Wnull-dereference -Wdouble-promotion
         -Wformat=2 -Wfloat-equal -Woverloaded-virtual
@@ -67,6 +67,9 @@ macro(caelestia_setup_warnings)
     )
 
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        add_compile_options(-Wunused-lambda-capture)
+        list(APPEND cxx_warnings -Wunused-lambda-capture)
     endif()
+
+    add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:${cxx_warnings}>")
+    unset(cxx_warnings)
 endmacro()
