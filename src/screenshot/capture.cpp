@@ -69,6 +69,8 @@ QtWayland::ext_image_copy_capture_manager_v1& Globals::captureManager() {
 }
 
 std::unique_ptr<WorkspaceSnapshot> Globals::snapshotWorkspaces() const {
+    if (!workspaceCaptureSupported())
+        return nullptr;
     return std::make_unique<WorkspaceSnapshot>(m_display, m_registry, m_workspaceManagerName);
 }
 

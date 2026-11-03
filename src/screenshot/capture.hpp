@@ -35,7 +35,6 @@ public:
     [[nodiscard]] static Globals* instance();
 
     [[nodiscard]] bool supported() const;
-    [[nodiscard]] bool workspaceCaptureSupported() const;
     [[nodiscard]] wl_shm* shm() const;
     [[nodiscard]] QtWayland::ext_output_image_capture_source_manager_v1& sourceManager();
     [[nodiscard]] QtWayland::hyprland_workspace_image_capture_source_manager_v1& workspaceSourceManager();
@@ -45,6 +44,8 @@ public:
 private:
     explicit Globals(wl_display* display);
     ~Globals() = default;
+
+    [[nodiscard]] bool workspaceCaptureSupported() const;
 
     static void handleGlobal(void* data, wl_registry* registry, uint32_t name, const char* interface, uint32_t version);
     static void handleGlobalRemove(void* data, wl_registry* registry, uint32_t name);

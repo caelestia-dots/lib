@@ -65,52 +65,53 @@ QFuture<QImage> captureScreen(Globals& globals, const QScreen* screen, std::shar
     return captureOutput(globals, screen->size(), output);
 }
 
+Globals* globalsIfSupported() {
+    auto* const globals = Globals::instance();
+    return globals != nullptr && globals->supported() ? globals : nullptr;
+}
+
 } // namespace
 
 bool isSupported() {
-    const auto* globals = Globals::instance();
-    return globals != nullptr && globals->supported();
+    return globalsIfSupported() != nullptr;
 }
 
 QFuture<QImage> capture(const QScreen* screen) {
-    auto* globals = Globals::instance();
-    if (globals == nullptr || !globals->supported()) {
+    auto* const globals = globalsIfSupported();
+    if (globals == nullptr) {
         qCWarning(lcScreenshot) << "Screen capture is not supported by the compositor";
         return failed();
     }
 
-    return captureScreen(
-        *globals, screen, globals->workspaceCaptureSupported() ? globals->snapshotWorkspaces() : nullptr);
+    return captureScreen(*globals, screen, globals->snapshotWorkspaces());
 }
 
 QFuture<QImage> capture(const QRect& region) {
-    auto* globals = Globals::instance();
-    if (globals == nullptr || !globals->supported()) {
+    auto* const globals = globalsIfSupported();
+    if (globals == nullptr) {
         qCWarning(lcScreenshot) << "Screen capture is not supported by the compositor";
         return failed();
     }
 
-    QList<QRect> geometries;
-    QList<QFuture<QImage>> futures;
     QList<const QScreen*> intersecting;
-    std::shared_ptr<WorkspaceSnapshot> workspaces;
     const auto screens = QGuiApplication::screens();
     for (const auto* screen : screens) {
-        if (!screen->geometry().intersects(region))
-            continue;
-        geometries << screen->geometry();
-        intersecting << screen;
+        if (screen->geometry().intersects(region))
+            intersecting << screen;
     }
 
-    if (geometries.isEmpty()) {
+    if (intersecting.isEmpty()) {
         qCWarning(lcScreenshot) << "Region" << region << "does not intersect any screen";
         return failed();
     }
 
-    if (globals->workspaceCaptureSupported())
-        workspaces = globals->snapshotWorkspaces();
-    for (const auto* screen : std::as_const(intersecting))
+    const std::shared_ptr<WorkspaceSnapshot> workspaces = globals->snapshotWorkspaces();
+    QList<QRect> geometries;
+    QList<QFuture<QImage>> futures;
+    for (const auto* screen : std::as_const(intersecting)) {
+        geometries << screen->geometry();
         futures << captureScreen(*globals, screen, workspaces);
+    }
 
     return QtFuture::whenAll(futures.begin(), futures.end())
         .then([region, geometries](const QList<QFuture<QImage>>& results) {
