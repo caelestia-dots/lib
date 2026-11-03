@@ -9,6 +9,7 @@
 #include <wayland-client-protocol.h>
 
 #include <algorithm>
+#include <cerrno>
 #include <cstring>
 
 namespace caelestia::screenshot {
