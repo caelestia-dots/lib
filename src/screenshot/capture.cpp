@@ -160,7 +160,7 @@ int ShmBuffer::stride() const {
 }
 
 Capture::Capture(Globals& globals, ext_image_capture_source_v1* source, const QSize& logicalSize,
-    std::unique_ptr<WorkspaceSnapshot> workspaces)
+    std::shared_ptr<WorkspaceSnapshot> workspaces)
     : m_shm(globals.shm())
     , m_logicalSize(logicalSize)
     , m_workspaces(std::move(workspaces))

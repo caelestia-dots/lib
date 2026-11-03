@@ -87,7 +87,7 @@ class Capture final : public QObject,
                       private QtWayland::ext_image_copy_capture_frame_v1 {
 public:
     Capture(Globals& globals, ext_image_capture_source_v1* source, const QSize& logicalSize,
-        std::unique_ptr<WorkspaceSnapshot> workspaces = nullptr);
+        std::shared_ptr<WorkspaceSnapshot> workspaces = nullptr);
     ~Capture() override;
 
     [[nodiscard]] QFuture<QImage> future();
@@ -107,7 +107,7 @@ private:
 
     wl_shm* m_shm;
     QSize m_logicalSize;
-    std::unique_ptr<WorkspaceSnapshot> m_workspaces;
+    std::shared_ptr<WorkspaceSnapshot> m_workspaces;
     QPromise<QImage> m_promise;
     ext_image_capture_source_v1* m_source;
     std::unique_ptr<ShmBuffer> m_buffer;
