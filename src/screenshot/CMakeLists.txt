@@ -1,6 +1,7 @@
 find_package(Qt6 REQUIRED COMPONENTS WaylandClient)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(wayland-client REQUIRED IMPORTED_TARGET wayland-client)
+pkg_check_modules(wayland-protocols REQUIRED wayland-protocols>=1.37)
 pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
 
 add_library(caelestia-screenshot OBJECT
