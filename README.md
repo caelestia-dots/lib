@@ -22,6 +22,7 @@ A shared C++ library for [Caelestia](https://github.com/caelestia-dots).
 - [FFmpeg](https://github.com/ffmpeg/ffmpeg)
 - [wayland](https://gitlab.freedesktop.org/wayland/wayland)
   [wayland-protocols](https://gitlab.freedesktop.org/wayland/wayland-protocols)
+- [hyprland-protocols](https://github.com/hyprwm/hyprland-protocols)
 
 ## Installation
 

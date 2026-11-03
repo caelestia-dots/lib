@@ -9,8 +9,9 @@
 
 namespace caelestia::screenshot {
 
-[[nodiscard]] std::optional<uint32_t> preferredShmFormat(const QList<uint32_t>& offered);
+[[nodiscard]] std::optional<uint32_t> preferredShmFormat(const QList<uint32_t>& offered, bool preferAlpha = false);
 [[nodiscard]] QImage::Format imageFormat(uint32_t shmFormat);
+[[nodiscard]] bool isBlank(const QImage& image);
 [[nodiscard]] QImage applyTransform(const QImage& image, uint32_t transform);
 [[nodiscard]] QImage composite(const QRect& region, const QList<QRect>& geometries, const QList<QImage>& parts);
 

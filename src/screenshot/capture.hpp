@@ -13,6 +13,7 @@
 
 #include "qwayland-ext-image-capture-source-v1.h"
 #include "qwayland-ext-image-copy-capture-v1.h"
+#include "qwayland-hyprland-workspace-image-capture-source-v1.h"
 
 struct wl_buffer;
 struct wl_display;
@@ -25,6 +26,8 @@ namespace caelestia::screenshot {
 
 Q_DECLARE_LOGGING_CATEGORY(lcScreenshot)
 
+class WorkspaceSnapshot;
+
 class Globals {
 public:
     Q_DISABLE_COPY_MOVE(Globals)
@@ -32,9 +35,12 @@ public:
     [[nodiscard]] static Globals* instance();
 
     [[nodiscard]] bool supported() const;
+    [[nodiscard]] bool workspaceCaptureSupported() const;
     [[nodiscard]] wl_shm* shm() const;
     [[nodiscard]] QtWayland::ext_output_image_capture_source_manager_v1& sourceManager();
+    [[nodiscard]] QtWayland::hyprland_workspace_image_capture_source_manager_v1& workspaceSourceManager();
     [[nodiscard]] QtWayland::ext_image_copy_capture_manager_v1& captureManager();
+    [[nodiscard]] std::unique_ptr<WorkspaceSnapshot> snapshotWorkspaces() const;
 
 private:
     explicit Globals(wl_display* display);
@@ -43,9 +49,12 @@ private:
     static void handleGlobal(void* data, wl_registry* registry, uint32_t name, const char* interface, uint32_t version);
     static void handleGlobalRemove(void* data, wl_registry* registry, uint32_t name);
 
+    wl_display* m_display;
     wl_registry* m_registry = nullptr;
     wl_shm* m_shm = nullptr;
+    uint32_t m_workspaceManagerName = 0;
     QtWayland::ext_output_image_capture_source_manager_v1 m_sourceManager;
+    QtWayland::hyprland_workspace_image_capture_source_manager_v1 m_workspaceSourceManager;
     QtWayland::ext_image_copy_capture_manager_v1 m_captureManager;
 };
 
@@ -73,7 +82,8 @@ class Capture final : public QObject,
                       private QtWayland::ext_image_copy_capture_session_v1,
                       private QtWayland::ext_image_copy_capture_frame_v1 {
 public:
-    Capture(Globals& globals, wl_output* output, const QSize& logicalSize);
+    Capture(Globals& globals, ext_image_capture_source_v1* source, const QSize& logicalSize,
+        std::unique_ptr<WorkspaceSnapshot> workspaces = nullptr);
     ~Capture() override;
 
     [[nodiscard]] QFuture<QImage> future();
@@ -93,15 +103,16 @@ private:
 
     wl_shm* m_shm;
     QSize m_logicalSize;
+    std::unique_ptr<WorkspaceSnapshot> m_workspaces;
     QPromise<QImage> m_promise;
     ext_image_capture_source_v1* m_source;
     std::unique_ptr<ShmBuffer> m_buffer;
     int m_width = 0;
     int m_height = 0;
     QList<uint32_t> m_formats;
-    bool m_done = false;
     uint32_t m_format = 0;
     uint32_t m_transform = 0;
+    bool m_done = false;
 };
 
 } // namespace caelestia::screenshot
