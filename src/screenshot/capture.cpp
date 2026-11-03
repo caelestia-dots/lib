@@ -97,7 +97,9 @@ void Globals::handleGlobalRemove(void* data, wl_registry* registry, uint32_t nam
 }
 
 ShmBuffer::ShmBuffer(wl_shm* shm, int width, int height, uint32_t format)
-    : m_stride(width * k_bytesPerPixel)
+    : m_width(width)
+    , m_height(height)
+    , m_stride(width * k_bytesPerPixel)
     , m_size(static_cast<size_t>(m_stride) * static_cast<size_t>(height)) {
     const int fd = memfd_create("caelestia-screenshot", MFD_CLOEXEC);
     if (fd < 0) {
@@ -145,6 +147,14 @@ const uchar* ShmBuffer::data() const {
     return static_cast<const uchar*>(m_data);
 }
 
+int ShmBuffer::width() const {
+    return m_width;
+}
+
+int ShmBuffer::height() const {
+    return m_height;
+}
+
 int ShmBuffer::stride() const {
     return m_stride;
 }
@@ -173,16 +183,22 @@ QFuture<QImage> Capture::future() {
 }
 
 void Capture::ext_image_copy_capture_session_v1_buffer_size(uint32_t width, uint32_t height) {
+    if (ext_image_copy_capture_frame_v1::isInitialized())
+        return;
+
     m_width = static_cast<int>(width);
     m_height = static_cast<int>(height);
 }
 
 void Capture::ext_image_copy_capture_session_v1_shm_format(uint32_t format) {
+    if (ext_image_copy_capture_frame_v1::isInitialized())
+        return;
+
     m_formats << format;
 }
 
 void Capture::ext_image_copy_capture_session_v1_done() {
-    if (ext_image_copy_capture_frame_v1::isInitialized())
+    if (m_done || ext_image_copy_capture_frame_v1::isInitialized())
         return;
 
     const auto chosen = preferredShmFormat(m_formats, m_workspaces != nullptr);
@@ -214,7 +230,8 @@ void Capture::ext_image_copy_capture_frame_v1_transform(uint32_t transform) {
 }
 
 void Capture::ext_image_copy_capture_frame_v1_ready() {
-    const QImage raw(m_buffer->data(), m_width, m_height, m_buffer->stride(), imageFormat(m_format));
+    const QImage raw(
+        m_buffer->data(), m_buffer->width(), m_buffer->height(), m_buffer->stride(), imageFormat(m_format));
     if (m_workspaces && raw.hasAlphaChannel() && isBlank(raw)) {
         fail("workspace capture is empty");
         return;

@@ -68,9 +68,13 @@ public:
     [[nodiscard]] bool valid() const;
     [[nodiscard]] wl_buffer* buffer() const;
     [[nodiscard]] const uchar* data() const;
+    [[nodiscard]] int width() const;
+    [[nodiscard]] int height() const;
     [[nodiscard]] int stride() const;
 
 private:
+    int m_width;
+    int m_height;
     int m_stride;
     size_t m_size;
     void* m_data = nullptr;
