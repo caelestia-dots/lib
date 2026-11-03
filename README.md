@@ -18,11 +18,11 @@ A shared C++ library for [Caelestia](https://github.com/caelestia-dots).
 
 ## Dependencies
 
-- [Qt 6](https://github.com/qt/qtbase)
-- [FFmpeg](https://github.com/ffmpeg/ffmpeg)
-- [wayland](https://gitlab.freedesktop.org/wayland/wayland)
-  [wayland-protocols](https://gitlab.freedesktop.org/wayland/wayland-protocols)
-- [hyprland-protocols](https://github.com/hyprwm/hyprland-protocols)
+- [qt6-base](https://github.com/qt/qtbase)
+- [ffmpeg](https://github.com/ffmpeg/ffmpeg)
+- [wayland](https://gitlab.freedesktop.org/wayland/wayland) (wayland-client + wayland-scanner)
+- [wayland-protocols](https://gitlab.freedesktop.org/wayland/wayland-protocols) >= 1.37
+- [hyprland-protocols](https://github.com/hyprwm/hyprland-protocols) >= 0.8.0
 
 ## Installation
 
