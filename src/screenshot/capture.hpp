@@ -6,6 +6,7 @@
 #include <qloggingcategory.h>
 #include <qobject.h>
 #include <qpromise.h>
+#include <qsize.h>
 
 #include <cstdint>
 #include <memory>
@@ -72,7 +73,7 @@ class Capture final : public QObject,
                       private QtWayland::ext_image_copy_capture_session_v1,
                       private QtWayland::ext_image_copy_capture_frame_v1 {
 public:
-    Capture(Globals& globals, wl_output* output, qreal devicePixelRatio);
+    Capture(Globals& globals, wl_output* output, const QSize& logicalSize);
     ~Capture() override;
 
     [[nodiscard]] QFuture<QImage> future();
@@ -91,7 +92,7 @@ private:
     void finish(const QImage& image);
 
     wl_shm* m_shm;
-    qreal m_devicePixelRatio;
+    QSize m_logicalSize;
     QPromise<QImage> m_promise;
     ext_image_capture_source_v1* m_source;
     std::unique_ptr<ShmBuffer> m_buffer;

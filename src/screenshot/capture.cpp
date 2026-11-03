@@ -157,9 +157,9 @@ int ShmBuffer::stride() const {
     return m_stride;
 }
 
-Capture::Capture(Globals& globals, wl_output* output, qreal devicePixelRatio)
+Capture::Capture(Globals& globals, wl_output* output, const QSize& logicalSize)
     : m_shm(globals.shm())
-    , m_devicePixelRatio(devicePixelRatio)
+    , m_logicalSize(logicalSize)
     , m_source(globals.sourceManager().create_source(output)) {
     m_promise.start();
     ext_image_copy_capture_session_v1::init(globals.captureManager().create_session(m_source, 0));
@@ -224,7 +224,7 @@ void Capture::ext_image_copy_capture_frame_v1_transform(uint32_t transform) {
 void Capture::ext_image_copy_capture_frame_v1_ready() {
     const QImage raw(m_buffer->data(), m_width, m_height, m_buffer->stride(), imageFormat(m_format));
     auto image = applyTransform(raw.copy(), m_transform);
-    image.setDevicePixelRatio(m_devicePixelRatio);
+    image.setDevicePixelRatio(qreal(image.width()) / m_logicalSize.width());
     finish(image);
 }
 

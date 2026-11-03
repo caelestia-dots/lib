@@ -18,20 +18,23 @@ QFuture<QImage> failed() {
 }
 
 QImage composite(const QRect& region, const QList<QScreen*>& screens, const QList<QFuture<QImage>>& results) {
-    const auto scale = std::ranges::max(screens, {}, &QScreen::devicePixelRatio)->devicePixelRatio();
+    QList<QImage> parts;
+    for (const auto& result : results) {
+        parts << result.result();
+        if (parts.last().isNull())
+            return {};
+    }
+
+    const auto scale = std::ranges::max(parts, {}, &QImage::devicePixelRatio).devicePixelRatio();
 
     QImage image((QSizeF(region.size()) * scale).toSize(), QImage::Format_ARGB32_Premultiplied);
     image.fill(Qt::transparent);
 
     QPainter painter(&image);
-    for (qsizetype i = 0; i < screens.size(); ++i) {
-        const auto part = results[i].result();
-        if (part.isNull())
-            return {};
-
+    for (qsizetype i = 0; i < parts.size(); ++i) {
         const auto geometry = screens[i]->geometry();
         const QRectF target(QPointF(geometry.topLeft() - region.topLeft()) * scale, QSizeF(geometry.size()) * scale);
-        painter.drawImage(target, part, part.rect());
+        painter.drawImage(target, parts[i], parts[i].rect());
     }
     painter.end();
 
@@ -59,7 +62,7 @@ QFuture<QImage> capture(QScreen* screen) {
         return failed();
     }
 
-    return (new Capture(*globals, native->output(), screen->devicePixelRatio()))->future();
+    return (new Capture(*globals, native->output(), screen->size()))->future();
 }
 
 QFuture<QImage> capture(const QRect& region) {
