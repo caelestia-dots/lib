@@ -6,6 +6,7 @@ pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
 
 add_library(caelestia-screenshot OBJECT
     capture.cpp
+    image.cpp
     screenshot.cpp
 )
 qt_generate_wayland_protocol_client_sources(caelestia-screenshot

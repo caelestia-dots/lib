@@ -2,7 +2,6 @@
 
 #include <qguiapplication.h>
 #include <qguiapplication_platform.h>
-#include <qtransform.h>
 
 #include <sys/mman.h>
 #include <unistd.h>
@@ -12,6 +11,8 @@
 #include <cerrno>
 #include <cstring>
 
+#include "image.hpp"
+
 namespace caelestia::screenshot {
 
 Q_LOGGING_CATEGORY(lcScreenshot, "caelestia.screenshot", QtInfoMsg)
@@ -19,36 +20,6 @@ Q_LOGGING_CATEGORY(lcScreenshot, "caelestia.screenshot", QtInfoMsg)
 namespace {
 
 constexpr int k_bytesPerPixel = 4;
-
-struct FormatMapping {
-    uint32_t shm;
-    QImage::Format image;
-};
-
-constexpr FormatMapping k_formats[] = {
-    { .shm = WL_SHM_FORMAT_XRGB8888, .image = QImage::Format_RGB32 },
-    { .shm = WL_SHM_FORMAT_ARGB8888, .image = QImage::Format_ARGB32_Premultiplied },
-    { .shm = WL_SHM_FORMAT_XBGR8888, .image = QImage::Format_RGBX8888 },
-    { .shm = WL_SHM_FORMAT_ABGR8888, .image = QImage::Format_RGBA8888_Premultiplied },
-};
-
-QImage::Format imageFormat(uint32_t shmFormat) {
-    for (const auto& [shm, image] : k_formats) {
-        if (shm == shmFormat)
-            return image;
-    }
-    return QImage::Format_Invalid;
-}
-
-QImage applyTransform(const QImage& image, uint32_t transform) {
-    const auto flipped = transform >= WL_OUTPUT_TRANSFORM_FLIPPED;
-    const auto rotation = static_cast<int>(transform & 3) * 90;
-
-    auto result = flipped ? image.flipped(Qt::Horizontal) : image;
-    if (rotation != 0)
-        result = result.transformed(QTransform().rotate(rotation));
-    return result;
-}
 
 } // namespace
 
@@ -191,14 +162,12 @@ void Capture::ext_image_copy_capture_session_v1_done() {
     if (ext_image_copy_capture_frame_v1::isInitialized())
         return;
 
-    const auto* chosen = std::ranges::find_if(k_formats, [this](const FormatMapping& mapping) {
-        return m_formats.contains(mapping.shm);
-    });
-    if (chosen == std::end(k_formats) || m_width <= 0 || m_height <= 0) {
+    const auto chosen = preferredShmFormat(m_formats);
+    if (!chosen || m_width <= 0 || m_height <= 0) {
         fail("no usable buffer format");
         return;
     }
-    m_format = chosen->shm;
+    m_format = *chosen;
 
     m_buffer = std::make_unique<ShmBuffer>(m_shm, m_width, m_height, m_format);
     if (!m_buffer->valid()) {

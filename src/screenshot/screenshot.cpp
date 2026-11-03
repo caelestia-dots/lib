@@ -1,13 +1,11 @@
 #include "caelestia/screenshot/screenshot.hpp"
 
 #include <qguiapplication.h>
-#include <qpainter.h>
 #include <qscreen.h>
 #include <qscreen_platform.h>
 
-#include <algorithm>
-
 #include "capture.hpp"
+#include "image.hpp"
 
 namespace caelestia::screenshot {
 
@@ -15,31 +13,6 @@ namespace {
 
 QFuture<QImage> failed() {
     return QtFuture::makeReadyValueFuture(QImage());
-}
-
-QImage composite(const QRect& region, const QList<QScreen*>& screens, const QList<QFuture<QImage>>& results) {
-    QList<QImage> parts;
-    for (const auto& result : results) {
-        parts << result.result();
-        if (parts.last().isNull())
-            return {};
-    }
-
-    const auto scale = std::ranges::max(parts, {}, &QImage::devicePixelRatio).devicePixelRatio();
-
-    QImage image((QSizeF(region.size()) * scale).toSize(), QImage::Format_ARGB32_Premultiplied);
-    image.fill(Qt::transparent);
-
-    QPainter painter(&image);
-    for (qsizetype i = 0; i < parts.size(); ++i) {
-        const auto geometry = screens[i]->geometry();
-        const QRectF target(QPointF(geometry.topLeft() - region.topLeft()) * scale, QSizeF(geometry.size()) * scale);
-        painter.drawImage(target, parts[i], parts[i].rect());
-    }
-    painter.end();
-
-    image.setDevicePixelRatio(scale);
-    return image;
 }
 
 } // namespace
@@ -66,24 +39,27 @@ QFuture<QImage> capture(QScreen* screen) {
 }
 
 QFuture<QImage> capture(const QRect& region) {
-    QList<QScreen*> screens;
+    QList<QRect> geometries;
     QList<QFuture<QImage>> futures;
-    const auto all = QGuiApplication::screens();
-    for (auto* screen : all) {
+    const auto screens = QGuiApplication::screens();
+    for (auto* screen : screens) {
         if (!screen->geometry().intersects(region))
             continue;
-        screens << screen;
+        geometries << screen->geometry();
         futures << capture(screen);
     }
 
-    if (screens.isEmpty()) {
+    if (geometries.isEmpty()) {
         qCWarning(lcScreenshot) << "Region" << region << "does not intersect any screen";
         return failed();
     }
 
     return QtFuture::whenAll(futures.begin(), futures.end())
-        .then([region, screens](const QList<QFuture<QImage>>& results) {
-            return composite(region, screens, results);
+        .then([region, geometries](const QList<QFuture<QImage>>& results) {
+            QList<QImage> parts;
+            for (const auto& result : results)
+                parts << result.result();
+            return composite(region, geometries, parts);
         });
 }
 
