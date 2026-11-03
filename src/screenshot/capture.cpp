@@ -218,7 +218,6 @@ void Capture::ext_image_copy_capture_session_v1_done() {
     attach_buffer(m_buffer->buffer());
     damage_buffer(0, 0, m_width, m_height);
     capture();
-    wl_display_flush(qGuiApp->nativeInterface<QNativeInterface::QWaylandApplication>()->display());
 }
 
 void Capture::ext_image_copy_capture_session_v1_stopped() {
