@@ -227,16 +227,13 @@ private slots:
         QCOMPARE(errorOf(await(first)), ipc::Error::Cancelled);
     }
 
-    void screenshotAndPickAreIndependent() {
+    void screenshotWhilePickingIsBusy() {
         auto picking = pick();
         QTRY_VERIFY(m_request);
 
         auto shooting = shoot(false, false);
-        QTRY_VERIFY(m_screenshot);
-
-        m_screenshot->respond(u"/tmp/shot.png"_s);
-        QCOMPARE(std::get<QString>(await(shooting)), u"/tmp/shot.png"_s);
-        QVERIFY(m_request);
+        QCOMPARE(errorOf(await(shooting)), ipc::Error::Busy);
+        QVERIFY(!m_screenshot);
 
         m_request->respond(QRect(1, 2, 3, 4));
         QCOMPARE(std::get<QRect>(await(picking)), QRect(1, 2, 3, 4));

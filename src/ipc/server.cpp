@@ -140,7 +140,8 @@ void Server::dispatch(QLocalSocket* socket) {
             release(socket);
         },
         [this, socket](const protocol::PickRegion&) {
-            if (m_pendingPick) {
+            // Pick/screenshot are exclusive
+            if (m_pendingPick || m_pendingScreenshot) {
                 answer(socket, Error::Busy);
                 return;
             }
@@ -149,7 +150,7 @@ void Server::dispatch(QLocalSocket* socket) {
             emit pickRegionRequested(m_pendingPick);
         },
         [this, socket](const protocol::Screenshot& sc) {
-            if (m_pendingScreenshot) {
+            if (m_pendingPick || m_pendingScreenshot) {
                 answer(socket, Error::Busy);
                 return;
             }
