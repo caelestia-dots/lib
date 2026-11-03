@@ -94,9 +94,9 @@ private slots:
         QTest::newRow("180") << static_cast<uint32_t>(WL_OUTPUT_TRANSFORM_180) << "FED/CBA/";
         QTest::newRow("270") << static_cast<uint32_t>(WL_OUTPUT_TRANSFORM_270) << "CF/BE/AD/";
         QTest::newRow("flipped") << static_cast<uint32_t>(WL_OUTPUT_TRANSFORM_FLIPPED) << "CBA/FED/";
-        QTest::newRow("flipped-90") << static_cast<uint32_t>(WL_OUTPUT_TRANSFORM_FLIPPED_90) << "FC/EB/DA/";
+        QTest::newRow("flipped-90") << static_cast<uint32_t>(WL_OUTPUT_TRANSFORM_FLIPPED_90) << "AD/BE/CF/";
         QTest::newRow("flipped-180") << static_cast<uint32_t>(WL_OUTPUT_TRANSFORM_FLIPPED_180) << "DEF/ABC/";
-        QTest::newRow("flipped-270") << static_cast<uint32_t>(WL_OUTPUT_TRANSFORM_FLIPPED_270) << "AD/BE/CF/";
+        QTest::newRow("flipped-270") << static_cast<uint32_t>(WL_OUTPUT_TRANSFORM_FLIPPED_270) << "FC/EB/DA/";
     }
 
     void transform() {

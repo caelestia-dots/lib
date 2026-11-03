@@ -64,10 +64,8 @@ QImage applyTransform(const QImage& image, uint32_t transform) {
     const auto flipped = transform >= WL_OUTPUT_TRANSFORM_FLIPPED;
     const auto rotation = static_cast<int>(transform & 3u) * 90;
 
-    auto result = flipped ? image.flipped(Qt::Horizontal) : image;
-    if (rotation != 0)
-        result = result.transformed(QTransform().rotate(rotation));
-    return result;
+    const auto result = rotation != 0 ? image.transformed(QTransform().rotate(rotation)) : image;
+    return flipped ? result.flipped(Qt::Horizontal) : result;
 }
 
 QImage composite(const QRect& region, const QList<QRect>& geometries, const QList<QImage>& parts) {
