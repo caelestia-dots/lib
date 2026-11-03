@@ -4,21 +4,24 @@ A shared C++ library for [Caelestia](https://github.com/caelestia-dots).
 
 ## Modules
 
-| Module      | Contains                                                  |
-| ----------- | --------------------------------------------------------- |
-| `config`    | Basic access to `~/.config/caelestia/config.json` + paths |
-| `ipc`       | CLI to shell requests over a local socket + QML module    |
-| `media`     | Image/video colour analysis                               |
-| `record`    | Screen recorder lifecycle and state                       |
-| `scheme`    | Material 3 scheme generation                              |
-| `theme`     | Apply schemes to apps                                     |
-| `utils`     | File and blob caches, component registry, Hyprland socket |
-| `wallpaper` | Current wallpaper state and wallpaper-driven schemes      |
+| Module       | Contains                                                  |
+| ------------ | --------------------------------------------------------- |
+| `config`     | Basic access to `~/.config/caelestia/config.json` + paths |
+| `ipc`        | CLI to shell requests over a local socket + QML module    |
+| `media`      | Image/video colour analysis                               |
+| `record`     | Screen recorder lifecycle and state                       |
+| `scheme`     | Material 3 scheme generation                              |
+| `screenshot` | Wayland screen capture via ext-image-copy-capture         |
+| `theme`      | Apply schemes to apps                                     |
+| `utils`      | File and blob caches, component registry, Hyprland socket |
+| `wallpaper`  | Current wallpaper state and wallpaper-driven schemes      |
 
 ## Dependencies
 
-- [Qt 6](https://github.com/qt/qtbase)
-- [FFmpeg](https://github.com/ffmpeg/ffmpeg)
+- [qt6-base](https://github.com/qt/qtbase)
+- [ffmpeg](https://github.com/ffmpeg/ffmpeg)
+- [wayland](https://gitlab.freedesktop.org/wayland/wayland) (wayland-client + wayland-scanner)
+- [wayland-protocols](https://gitlab.freedesktop.org/wayland/wayland-protocols) >= 1.37
 
 ## Installation
 

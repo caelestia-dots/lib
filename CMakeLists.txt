@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.25)
 include(cmake/caelestiaSetup.cmake)
 caelestia_version()
 
-project(caelestia VERSION ${VERSION} LANGUAGES CXX)
+project(caelestia VERSION ${VERSION} LANGUAGES C CXX)
 caelestia_setup(caelestia-lib)
 caelestia_setup_warnings()
 
@@ -41,6 +41,7 @@ add_subdirectory(src/utils)
 add_subdirectory(src/media)
 add_subdirectory(src/record)
 add_subdirectory(src/scheme)
+add_subdirectory(src/screenshot)
 add_subdirectory(src/theme)
 add_subdirectory(src/wallpaper)
 
@@ -63,6 +64,7 @@ target_link_libraries(caelestia
         caelestia-media
         caelestia-record
         caelestia-scheme
+        caelestia-screenshot
         caelestia-theme
         caelestia-utils
         caelestia-wallpaper
