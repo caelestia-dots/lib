@@ -20,7 +20,7 @@ private slots:
     }
 
     void nullScreenFails() {
-        auto future = screenshot::capture(static_cast<QScreen*>(nullptr));
+        auto future = screenshot::capture(static_cast<const QScreen*>(nullptr));
         QVERIFY(future.isFinished());
         QVERIFY(future.result().isNull());
     }

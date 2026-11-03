@@ -221,7 +221,7 @@ void Capture::ext_image_copy_capture_frame_v1_ready() {
     }
 
     auto image = applyTransform(raw.copy(), m_transform);
-    image.setDevicePixelRatio(qreal(image.width()) / m_logicalSize.width());
+    image.setDevicePixelRatio(static_cast<qreal>(image.width()) / m_logicalSize.width());
     finish(image);
 }
 

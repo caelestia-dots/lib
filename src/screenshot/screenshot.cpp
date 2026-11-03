@@ -51,7 +51,7 @@ bool isSupported() {
     return globals != nullptr && globals->supported();
 }
 
-QFuture<QImage> capture(QScreen* screen) {
+QFuture<QImage> capture(const QScreen* screen) {
     auto* globals = Globals::instance();
     if (globals == nullptr || !globals->supported()) {
         qCWarning(lcScreenshot) << "Screen capture is not supported by the compositor";
@@ -74,7 +74,7 @@ QFuture<QImage> capture(const QRect& region) {
     QList<QRect> geometries;
     QList<QFuture<QImage>> futures;
     const auto screens = QGuiApplication::screens();
-    for (auto* screen : screens) {
+    for (const auto* screen : screens) {
         if (!screen->geometry().intersects(region))
             continue;
         geometries << screen->geometry();

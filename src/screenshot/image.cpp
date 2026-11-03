@@ -62,7 +62,7 @@ bool isBlank(const QImage& image) {
 
 QImage applyTransform(const QImage& image, uint32_t transform) {
     const auto flipped = transform >= WL_OUTPUT_TRANSFORM_FLIPPED;
-    const auto rotation = static_cast<int>(transform & 3) * 90;
+    const auto rotation = static_cast<int>(transform & 3u) * 90;
 
     auto result = flipped ? image.flipped(Qt::Horizontal) : image;
     if (rotation != 0)
