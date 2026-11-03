@@ -13,7 +13,6 @@
 #include "caelestia/ipc/client.hpp"
 
 using namespace caelestia;
-using Qt::StringLiterals::operator""_s;
 
 namespace {
 

@@ -14,25 +14,25 @@ private slots:
     void unsupportedOffscreen() { QVERIFY(!screenshot::isSupported()); }
 
     void screenFailsOffscreen() {
-        auto future = screenshot::capture(QGuiApplication::primaryScreen());
+        const auto future = screenshot::capture(QGuiApplication::primaryScreen());
         QVERIFY(future.isFinished());
         QVERIFY(future.result().isNull());
     }
 
     void nullScreenFails() {
-        auto future = screenshot::capture(static_cast<const QScreen*>(nullptr));
+        const auto future = screenshot::capture(static_cast<const QScreen*>(nullptr));
         QVERIFY(future.isFinished());
         QVERIFY(future.result().isNull());
     }
 
     void regionOutsideScreensFails() {
-        auto future = screenshot::capture(QRect(-10000, -10000, 10, 10));
+        const auto future = screenshot::capture(QRect(-10000, -10000, 10, 10));
         QVERIFY(future.isFinished());
         QVERIFY(future.result().isNull());
     }
 
     void regionFailsOffscreen() {
-        auto future = screenshot::capture(QGuiApplication::primaryScreen()->geometry());
+        const auto future = screenshot::capture(QGuiApplication::primaryScreen()->geometry());
         QVERIFY(future.isFinished());
         QVERIFY(future.result().isNull());
     }

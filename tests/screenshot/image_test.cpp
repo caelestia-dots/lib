@@ -89,19 +89,19 @@ private slots:
         QTest::addColumn<uint32_t>("transform");
         QTest::addColumn<QString>("expected");
 
-        QTest::newRow("normal") << uint32_t(WL_OUTPUT_TRANSFORM_NORMAL) << "ABC/DEF/";
-        QTest::newRow("90") << uint32_t(WL_OUTPUT_TRANSFORM_90) << "DA/EB/FC/";
-        QTest::newRow("180") << uint32_t(WL_OUTPUT_TRANSFORM_180) << "FED/CBA/";
-        QTest::newRow("270") << uint32_t(WL_OUTPUT_TRANSFORM_270) << "CF/BE/AD/";
-        QTest::newRow("flipped") << uint32_t(WL_OUTPUT_TRANSFORM_FLIPPED) << "CBA/FED/";
-        QTest::newRow("flipped-90") << uint32_t(WL_OUTPUT_TRANSFORM_FLIPPED_90) << "FC/EB/DA/";
-        QTest::newRow("flipped-180") << uint32_t(WL_OUTPUT_TRANSFORM_FLIPPED_180) << "DEF/ABC/";
-        QTest::newRow("flipped-270") << uint32_t(WL_OUTPUT_TRANSFORM_FLIPPED_270) << "AD/BE/CF/";
+        QTest::newRow("normal") << static_cast<uint32_t>(WL_OUTPUT_TRANSFORM_NORMAL) << "ABC/DEF/";
+        QTest::newRow("90") << static_cast<uint32_t>(WL_OUTPUT_TRANSFORM_90) << "DA/EB/FC/";
+        QTest::newRow("180") << static_cast<uint32_t>(WL_OUTPUT_TRANSFORM_180) << "FED/CBA/";
+        QTest::newRow("270") << static_cast<uint32_t>(WL_OUTPUT_TRANSFORM_270) << "CF/BE/AD/";
+        QTest::newRow("flipped") << static_cast<uint32_t>(WL_OUTPUT_TRANSFORM_FLIPPED) << "CBA/FED/";
+        QTest::newRow("flipped-90") << static_cast<uint32_t>(WL_OUTPUT_TRANSFORM_FLIPPED_90) << "FC/EB/DA/";
+        QTest::newRow("flipped-180") << static_cast<uint32_t>(WL_OUTPUT_TRANSFORM_FLIPPED_180) << "DEF/ABC/";
+        QTest::newRow("flipped-270") << static_cast<uint32_t>(WL_OUTPUT_TRANSFORM_FLIPPED_270) << "AD/BE/CF/";
     }
 
     void transform() {
-        QFETCH(uint32_t, transform);
-        QFETCH(QString, expected);
+        QFETCH(const uint32_t, transform);
+        QFETCH(const QString, expected);
         QCOMPARE(layout(screenshot::applyTransform(pattern(), transform)), expected);
     }
 
