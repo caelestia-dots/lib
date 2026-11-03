@@ -33,6 +33,7 @@ private:
     QPointer<ipc::PickRegionRequest> m_request;
     QPointer<ipc::ScreenshotRequest> m_screenshot;
     QPointer<ipc::AnnotateRequest> m_annotate;
+    QPointer<ipc::PickFileRequest> m_pickFile;
 
     [[nodiscard]] QString socketPath() const { return m_root.filePath(u"caelestia/shell.sock"_s); }
 
@@ -51,6 +52,19 @@ private:
     [[nodiscard]] static Future<QString> annotate(const QString& file) {
         return std::async(std::launch::async, [file] {
             return ipc::annotate(file);
+        });
+    }
+
+    [[nodiscard]] static Future<QString> pickFile() {
+        return std::async(std::launch::async, [] {
+            return ipc::pickFile({
+                .title = u"Pick"_s,
+                .nameFilters = { u"*.png"_s, u"*.jpg"_s },
+                .filter = ipc::FileFilter::Images | ipc::FileFilter::Files,
+                .initialDir = u"/tmp"_s,
+                .initialName = u"shot.png"_s,
+                .mode = ipc::PickFileMode::Save,
+            });
         });
     }
 
@@ -82,6 +96,9 @@ private:
         connect(server.get(), &ipc::Server::annotateRequested, this, [this](ipc::AnnotateRequest* request) {
             m_annotate = request;
         });
+        connect(server.get(), &ipc::Server::pickFileRequested, this, [this](ipc::PickFileRequest* request) {
+            m_pickFile = request;
+        });
         return server;
     }
 
@@ -103,6 +120,7 @@ private slots:
         m_request.clear();
         m_screenshot.clear();
         m_annotate.clear();
+        m_pickFile.clear();
     }
 
     void failsWithoutServer() {
@@ -328,6 +346,85 @@ private slots:
         client.write("{\"method\":\"release\"}\n");
 
         QCOMPARE(errorOf(await(future)), ipc::Error::Cancelled);
+        QTRY_VERIFY(!m_server->isListening());
+    }
+
+    void pickFileRespondReturnsFile() {
+        auto future = pickFile();
+        QTRY_VERIFY(m_pickFile);
+        QCOMPARE(m_pickFile->title(), u"Pick"_s);
+        QCOMPARE(m_pickFile->nameFilters(), (QStringList{ u"*.png"_s, u"*.jpg"_s }));
+        QCOMPARE(m_pickFile->filter(), ipc::FileFilter::Images | ipc::FileFilter::Files);
+        QCOMPARE(m_pickFile->initialDir(), u"/tmp"_s);
+        QCOMPARE(m_pickFile->initialName(), u"shot.png"_s);
+        QCOMPARE(m_pickFile->mode(), ipc::PickFileMode::Save);
+
+        m_pickFile->respond(u"/tmp/picked.png"_s);
+        QTRY_VERIFY(m_pickFile.isNull());
+
+        QCOMPARE(std::get<QString>(await(future)), u"/tmp/picked.png"_s);
+    }
+
+    void pickFileRejectReportsCancelled() {
+        auto future = pickFile();
+        QTRY_VERIFY(m_pickFile);
+
+        m_pickFile->reject();
+        QTRY_VERIFY(m_pickFile.isNull());
+
+        QCOMPARE(errorOf(await(future)), ipc::Error::Cancelled);
+    }
+
+    void concurrentPickFilesAreIndependent() {
+        auto first = pickFile();
+        QTRY_VERIFY(m_pickFile);
+        const QPointer firstRequest = m_pickFile;
+
+        auto second = pickFile();
+        QTRY_VERIFY(m_pickFile && m_pickFile != firstRequest);
+
+        m_pickFile->respond(u"/tmp/second.png"_s);
+        QCOMPARE(std::get<QString>(await(second)), u"/tmp/second.png"_s);
+        QVERIFY(firstRequest);
+
+        firstRequest->respond(u"/tmp/first.png"_s);
+        QCOMPARE(std::get<QString>(await(first)), u"/tmp/first.png"_s);
+    }
+
+    void pickFileClientDisconnectCancels() {
+        QLocalSocket client;
+        client.connectToServer(socketPath());
+        QVERIFY(client.waitForConnected());
+        client.write("{\"method\":\"pickFile\",\"title\":\"Pick\",\"nameFilters\":[\"*.png\"],\"filter\":8}\n");
+        QTRY_VERIFY(m_pickFile);
+        QCOMPARE(m_pickFile->title(), u"Pick"_s);
+        QCOMPARE(m_pickFile->nameFilters(), QStringList{ u"*.png"_s });
+        QCOMPARE(m_pickFile->filter(), ipc::FileFilter::Flags(ipc::FileFilter::Dirs));
+        QVERIFY(m_pickFile->initialDir().isEmpty());
+        QVERIFY(m_pickFile->initialName().isEmpty());
+        QCOMPARE(m_pickFile->mode(), ipc::PickFileMode::Select);
+
+        const QSignalSpy cancelled(m_pickFile.data(), &ipc::Request::cancelled);
+        client.disconnectFromServer();
+        QTRY_COMPARE(cancelled.size(), 1);
+        QTRY_VERIFY(m_pickFile.isNull());
+    }
+
+    void releaseRejectsAllPendingPickFiles() {
+        auto first = pickFile();
+        QTRY_VERIFY(m_pickFile);
+        const QPointer firstRequest = m_pickFile;
+
+        auto second = pickFile();
+        QTRY_VERIFY(m_pickFile && m_pickFile != firstRequest);
+
+        QLocalSocket client;
+        client.connectToServer(socketPath());
+        QVERIFY(client.waitForConnected());
+        client.write("{\"method\":\"release\"}\n");
+
+        QCOMPARE(errorOf(await(first)), ipc::Error::Cancelled);
+        QCOMPARE(errorOf(await(second)), ipc::Error::Cancelled);
         QTRY_VERIFY(!m_server->isListening());
     }
 

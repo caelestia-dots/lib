@@ -82,6 +82,38 @@ void AnnotateRequest::respond(const QString& file) {
     reply(file);
 }
 
+PickFileRequest::PickFileRequest(PickFileOptions options, QLocalSocket* socket)
+    : Request(socket)
+    , m_options(std::move(options)) {}
+
+[[nodiscard]] QString PickFileRequest::title() const {
+    return m_options.title;
+}
+
+[[nodiscard]] QStringList PickFileRequest::nameFilters() const {
+    return m_options.nameFilters;
+}
+
+[[nodiscard]] FileFilter::Flags PickFileRequest::filter() const {
+    return m_options.filter;
+}
+
+[[nodiscard]] QString PickFileRequest::initialDir() const {
+    return m_options.initialDir;
+}
+
+[[nodiscard]] QString PickFileRequest::initialName() const {
+    return m_options.initialName;
+}
+
+[[nodiscard]] PickFileMode::Enum PickFileRequest::mode() const {
+    return m_options.mode;
+}
+
+void PickFileRequest::respond(const QString& file) {
+    reply(file);
+}
+
 Server::Server(QObject* parent)
     : QObject(parent)
     , m_lock(protocol::lockPath()) {
@@ -167,6 +199,12 @@ void Server::dispatch(QLocalSocket* socket) {
             m_pendingAnnotate = new AnnotateRequest(an.file, socket);
             emit annotateRequested(m_pendingAnnotate);
         },
+        [this, socket](const protocol::PickFile& pf) {
+            auto* const request = new PickFileRequest(pf, socket);
+            m_pendingPickFiles.removeAll(nullptr);
+            m_pendingPickFiles.append(request);
+            emit pickFileRequested(request);
+        },
     };
     std::visit(handlers, *request);
 }
@@ -179,6 +217,10 @@ void Server::release(QLocalSocket* socket) {
         m_pendingScreenshot->reject();
     if (m_pendingAnnotate)
         m_pendingAnnotate->reject();
+    for (const auto& request : std::as_const(m_pendingPickFiles)) {
+        if (request)
+            request->reject();
+    }
     m_lock.unlock();
 
     socket->disconnectFromServer();

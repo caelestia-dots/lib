@@ -39,7 +39,11 @@ struct Annotate {
     QString file;
 };
 
-using Request = std::variant<Release, PickRegion, Screenshot, Annotate>;
+struct PickFile : PickFileOptions {
+    static constexpr auto k_name = "pickFile"_L1;
+};
+
+using Request = std::variant<Release, PickRegion, Screenshot, Annotate, PickFile>;
 
 [[nodiscard]] QString socketPath();
 [[nodiscard]] QString lockPath();

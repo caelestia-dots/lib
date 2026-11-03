@@ -2,6 +2,7 @@ add_library(caelestia-ipc OBJECT
     client.cpp
     protocol.cpp
     server.cpp
+    ${PROJECT_SOURCE_DIR}/include/caelestia/ipc/common.hpp
     ${PROJECT_SOURCE_DIR}/include/caelestia/ipc/server.hpp
 )
 target_link_libraries(caelestia-ipc

@@ -4,6 +4,8 @@
 #include <qjsondocument.h>
 #include <qjsonobject.h>
 
+#include <utility>
+
 #include "caelestia/config/paths.hpp"
 
 namespace caelestia::ipc::protocol {
@@ -29,6 +31,14 @@ Error errorFromString(const QString& name) {
     if (name == "cancelled"_L1)
         return Error::Cancelled;
     return Error::Failed;
+}
+
+QStringList toStringList(const QJsonValue& value) {
+    QStringList list;
+    const auto array = value.toArray();
+    for (const auto& item : array)
+        list << item.toString();
+    return list;
 }
 
 QByteArray toLine(const QJsonObject& obj) {
@@ -62,6 +72,15 @@ QByteArray encode(const Request& request) {
         [&obj](const Annotate& an) {
             obj[u"method"] = Annotate::k_name;
             obj[u"file"] = an.file;
+        },
+        [&obj](const PickFile& pf) {
+            obj[u"method"] = PickFile::k_name;
+            obj[u"title"] = pf.title;
+            obj[u"nameFilters"] = QJsonArray::fromStringList(pf.nameFilters);
+            obj[u"filter"] = static_cast<int>(pf.filter);
+            obj[u"initialDir"] = pf.initialDir;
+            obj[u"initialName"] = pf.initialName;
+            obj[u"mode"] = pf.mode;
         },
     };
     std::visit(overloads, request);
@@ -104,6 +123,18 @@ std::optional<Request> decodeRequest(const QByteArray& line) {
 
     if (method == Annotate::k_name)
         return Annotate{ .file = obj.value(u"file").toString() };
+
+    if (method == PickFile::k_name) {
+        PickFileOptions options{
+            .title = obj.value(u"title").toString(),
+            .nameFilters = toStringList(obj.value(u"nameFilters")),
+            .filter = FileFilter::Flags(obj.value(u"filter").toInt()),
+            .initialDir = obj.value(u"initialDir").toString(),
+            .initialName = obj.value(u"initialName").toString(),
+            .mode = PickFileMode::Enum(obj.value(u"mode").toInt()),
+        };
+        return PickFile{ std::move(options) };
+    }
 
     return std::nullopt;
 }

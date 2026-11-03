@@ -80,4 +80,19 @@ Result<QString> annotate(const QString& file) {
     return expect<QString>(protocol::decodeResponse(socket.readLine()));
 }
 
+Result<QString> pickFile(const PickFileOptions& options) {
+    QLocalSocket socket;
+    socket.connectToServer(protocol::socketPath());
+    if (!socket.waitForConnected(k_connectTimeoutMs))
+        return Error::NotRunning;
+
+    socket.write(protocol::encode(protocol::PickFile{ options }));
+    if (!waitForLine(socket)) {
+        qCWarning(lcIpc) << "No reply from the shell:" << socket.errorString();
+        return Error::Failed;
+    }
+
+    return expect<QString>(protocol::decodeResponse(socket.readLine()));
+}
+
 } // namespace caelestia::ipc

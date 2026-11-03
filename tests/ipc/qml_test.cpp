@@ -24,6 +24,12 @@ QtObject {
     property bool region
     property bool annotate
     property string annotated
+    property string pickTitle
+    property list<string> pickNameFilters
+    property int pickFilter
+    property string pickInitialDir
+    property string pickInitialName
+    property int pickMode
 
     Component.onCompleted: {
         IpcServer.pickRegionRequested.connect(request => request.respond(Qt.rect(10, 20, 300, 200)));
@@ -35,6 +41,15 @@ QtObject {
         IpcServer.annotateRequested.connect(request => {
             annotated = request.file;
             request.respond(request.file + ".edited.png");
+        });
+        IpcServer.pickFileRequested.connect(request => {
+            pickTitle = request.title;
+            pickNameFilters = request.nameFilters;
+            pickFilter = request.filter;
+            pickInitialDir = request.initialDir;
+            pickInitialName = request.initialName;
+            pickMode = request.mode;
+            request.respond("/tmp/picked.png");
         });
     }
 }
@@ -105,6 +120,30 @@ private slots:
         QVERIFY(std::holds_alternative<QString>(result));
         QCOMPARE(std::get<QString>(result), QStringLiteral("/tmp/in.png.edited.png"));
         QCOMPARE(m_shell->property("annotated").toString(), QStringLiteral("/tmp/in.png"));
+    }
+
+    void pickFileThroughQml() {
+        auto future = std::async(std::launch::async, [] {
+            return ipc::pickFile({
+                .title = QStringLiteral("Pick"),
+                .nameFilters = { QStringLiteral("*.png") },
+                .filter = ipc::FileFilter::Images | ipc::FileFilter::Files,
+                .initialDir = QStringLiteral("/tmp"),
+                .initialName = QStringLiteral("shot.png"),
+                .mode = ipc::PickFileMode::Save,
+            });
+        });
+        QTRY_VERIFY(future.wait_for(std::chrono::seconds(0)) == std::future_status::ready);
+
+        const auto result = future.get();
+        QVERIFY(std::holds_alternative<QString>(result));
+        QCOMPARE(std::get<QString>(result), QStringLiteral("/tmp/picked.png"));
+        QCOMPARE(m_shell->property("pickTitle").toString(), QStringLiteral("Pick"));
+        QCOMPARE(m_shell->property("pickNameFilters").toStringList(), QStringList{ QStringLiteral("*.png") });
+        QCOMPARE(m_shell->property("pickFilter").toInt(), (ipc::FileFilter::Images | ipc::FileFilter::Files).toInt());
+        QCOMPARE(m_shell->property("pickInitialDir").toString(), QStringLiteral("/tmp"));
+        QCOMPARE(m_shell->property("pickInitialName").toString(), QStringLiteral("shot.png"));
+        QCOMPARE(m_shell->property("pickMode").toInt(), ipc::PickFileMode::Save);
     }
 };
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <qlist.h>
 #include <qlocalserver.h>
 #include <qlockfile.h>
 #include <qobject.h>
@@ -83,6 +84,34 @@ private:
     QString m_file;
 };
 
+class PickFileRequest : public Request {
+    Q_OBJECT
+
+    Q_PROPERTY(QString title READ title CONSTANT)
+    Q_PROPERTY(QStringList nameFilters READ nameFilters CONSTANT)
+    Q_PROPERTY(caelestia::ipc::FileFilter::Flags filter READ filter CONSTANT)
+    Q_PROPERTY(QString initialDir READ initialDir CONSTANT)
+    Q_PROPERTY(QString initialName READ initialName CONSTANT)
+    Q_PROPERTY(caelestia::ipc::PickFileMode::Enum mode READ mode CONSTANT)
+
+public:
+    [[nodiscard]] QString title() const;
+    [[nodiscard]] QStringList nameFilters() const;
+    [[nodiscard]] FileFilter::Flags filter() const;
+    [[nodiscard]] QString initialDir() const;
+    [[nodiscard]] QString initialName() const;
+    [[nodiscard]] PickFileMode::Enum mode() const;
+
+    Q_INVOKABLE void respond(const QString& file);
+
+private:
+    friend class Server;
+
+    PickFileRequest(PickFileOptions options, QLocalSocket* socket);
+
+    PickFileOptions m_options;
+};
+
 class Server : public QObject {
     Q_OBJECT
 
@@ -95,6 +124,7 @@ signals:
     void pickRegionRequested(caelestia::ipc::PickRegionRequest* request);
     void screenshotRequested(caelestia::ipc::ScreenshotRequest* request);
     void annotateRequested(caelestia::ipc::AnnotateRequest* request);
+    void pickFileRequested(caelestia::ipc::PickFileRequest* request);
     void released();
 
 private:
@@ -103,6 +133,7 @@ private:
     QPointer<PickRegionRequest> m_pendingPick;
     QPointer<ScreenshotRequest> m_pendingScreenshot;
     QPointer<AnnotateRequest> m_pendingAnnotate;
+    QList<QPointer<PickFileRequest>> m_pendingPickFiles;
 
     static void releaseExisting();
     void accept();
