@@ -34,19 +34,34 @@ private:
 class PickRegionRequest : public Request {
     Q_OBJECT
 
-    Q_PROPERTY(bool freeze READ freeze CONSTANT)
-
 public:
-    [[nodiscard]] bool freeze() const;
-
     Q_INVOKABLE void respond(const QRect& region);
 
 private:
     friend class Server;
 
-    PickRegionRequest(bool freeze, QLocalSocket* socket);
+    explicit PickRegionRequest(QLocalSocket* socket);
+};
 
-    bool m_freeze;
+class ScreenshotRequest : public Request {
+    Q_OBJECT
+
+    Q_PROPERTY(bool region READ region CONSTANT)
+    Q_PROPERTY(bool annotate READ annotate CONSTANT)
+
+public:
+    [[nodiscard]] bool region() const;
+    [[nodiscard]] bool annotate() const;
+
+    Q_INVOKABLE void respond(const QString& file);
+
+private:
+    friend class Server;
+
+    ScreenshotRequest(bool region, bool annotate, QLocalSocket* socket);
+
+    bool m_region;
+    bool m_annotate;
 };
 
 class Server : public QObject {
@@ -59,12 +74,14 @@ public:
 
 signals:
     void pickRegionRequested(caelestia::ipc::PickRegionRequest* request);
+    void screenshotRequested(caelestia::ipc::ScreenshotRequest* request);
     void released();
 
 private:
     QLockFile m_lock;
     QLocalServer m_server;
     QPointer<PickRegionRequest> m_pendingPick;
+    QPointer<ScreenshotRequest> m_pendingScreenshot;
 
     static void releaseExisting();
     void accept();

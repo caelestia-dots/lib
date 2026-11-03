@@ -35,19 +35,34 @@ bool waitForLine(QLocalSocket& socket) {
 
 } // namespace
 
-Result<QRect> pickRegion(bool freeze) {
+Result<QRect> pickRegion() {
     QLocalSocket socket;
     socket.connectToServer(protocol::socketPath());
     if (!socket.waitForConnected(k_connectTimeoutMs))
         return Error::NotRunning;
 
-    socket.write(protocol::encode(protocol::PickRegion{ .freeze = freeze }));
+    socket.write(protocol::encode(protocol::PickRegion{}));
     if (!waitForLine(socket)) {
         qCWarning(lcIpc) << "No reply from the shell:" << socket.errorString();
         return Error::Failed;
     }
 
     return expect<QRect>(protocol::decodeResponse(socket.readLine()));
+}
+
+Result<QString> screenshot(bool region, bool annotate) {
+    QLocalSocket socket;
+    socket.connectToServer(protocol::socketPath());
+    if (!socket.waitForConnected(k_connectTimeoutMs))
+        return Error::NotRunning;
+
+    socket.write(protocol::encode(protocol::Screenshot{ .region = region, .annotate = annotate }));
+    if (!waitForLine(socket)) {
+        qCWarning(lcIpc) << "No reply from the shell:" << socket.errorString();
+        return Error::Failed;
+    }
+
+    return expect<QString>(protocol::decodeResponse(socket.readLine()));
 }
 
 } // namespace caelestia::ipc

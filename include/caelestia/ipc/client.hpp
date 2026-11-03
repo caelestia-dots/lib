@@ -1,6 +1,7 @@
 #pragma once
 
 #include <qrect.h>
+#include <qstring.h>
 
 #include <variant>
 
@@ -10,6 +11,7 @@ namespace caelestia::ipc {
 
 template <typename T> using Result = std::variant<T, Error>;
 
-[[nodiscard]] Result<QRect> pickRegion(bool freeze);
+[[nodiscard]] Result<QRect> pickRegion();
+[[nodiscard]] Result<QString> screenshot(bool region, bool annotate);
 
 } // namespace caelestia::ipc

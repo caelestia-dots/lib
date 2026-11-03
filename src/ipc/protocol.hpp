@@ -24,11 +24,16 @@ struct Release {
 
 struct PickRegion {
     static constexpr auto k_name = "pickRegion"_L1;
-
-    bool freeze = false;
 };
 
-using Request = std::variant<Release, PickRegion>;
+struct Screenshot {
+    static constexpr auto k_name = "screenshot"_L1;
+
+    bool region;
+    bool annotate;
+};
+
+using Request = std::variant<Release, PickRegion, Screenshot>;
 
 [[nodiscard]] QString socketPath();
 [[nodiscard]] QString lockPath();

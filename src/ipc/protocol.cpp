@@ -51,9 +51,13 @@ QByteArray encode(const Request& request) {
         [&obj](const Release&) {
             obj[u"method"] = Release::k_name;
         },
-        [&obj](const PickRegion& pick) {
+        [&obj](const PickRegion&) {
             obj[u"method"] = PickRegion::k_name;
-            obj[u"freeze"] = pick.freeze;
+        },
+        [&obj](const Screenshot& sc) {
+            obj[u"method"] = Screenshot::k_name;
+            obj[u"region"] = sc.region;
+            obj[u"annotate"] = sc.annotate;
         },
     };
     std::visit(overloads, request);
@@ -69,6 +73,9 @@ QByteArray encode(const Response& response) {
         [&obj](const QRect& r) {
             obj[u"region"] = QJsonArray{ r.x(), r.y(), r.width(), r.height() };
         },
+        [&obj](const QString& file) {
+            obj[u"file"] = file;
+        },
     };
     std::visit(overloads, response);
     return toLine(obj);
@@ -82,7 +89,14 @@ std::optional<Request> decodeRequest(const QByteArray& line) {
         return Release{};
 
     if (method == PickRegion::k_name)
-        return PickRegion{ .freeze = obj.value(u"freeze").toBool() };
+        return PickRegion{};
+
+    if (method == Screenshot::k_name) {
+        return Screenshot{
+            .region = obj.value(u"region").toBool(),
+            .annotate = obj.value(u"annotate").toBool(),
+        };
+    }
 
     return std::nullopt;
 }
@@ -92,11 +106,18 @@ Response decodeResponse(const QByteArray& line) {
     if (obj.contains(u"error"))
         return errorFromString(obj.value(u"error").toString());
 
-    const auto region = obj.value(u"region").toArray();
-    if (region.size() != 4)
-        return Error::Failed;
+    if (obj.contains(u"region")) {
+        const auto region = obj.value(u"region").toArray();
+        if (region.size() != 4)
+            return Error::Failed;
 
-    return QRect(region[0].toInt(), region[1].toInt(), region[2].toInt(), region[3].toInt());
+        return QRect(region[0].toInt(), region[1].toInt(), region[2].toInt(), region[3].toInt());
+    }
+
+    if (obj.contains(u"file"))
+        return obj.value(u"file").toString();
+
+    return Error::Failed;
 }
 
 } // namespace caelestia::ipc::protocol

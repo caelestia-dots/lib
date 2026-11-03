@@ -14,6 +14,6 @@ enum class Error : quint8 {
     Failed,
 };
 
-using Response = std::variant<Error, QRect>;
+using Response = std::variant<Error, QRect, QString>;
 
 } // namespace caelestia::ipc

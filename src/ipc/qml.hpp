@@ -19,6 +19,13 @@ struct PickRegionRequestForeign {
     QML_UNCREATABLE("Created by IpcServer when a client requests a region")
 };
 
+struct ScreenshotRequestForeign {
+    Q_GADGET
+    QML_FOREIGN(caelestia::ipc::ScreenshotRequest)
+    QML_NAMED_ELEMENT(ScreenshotRequest)
+    QML_UNCREATABLE("Created by IpcServer when a client requests a screenshot")
+};
+
 struct ServerForeign {
     Q_GADGET
     QML_FOREIGN(caelestia::ipc::Server)

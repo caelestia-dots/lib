@@ -22,7 +22,7 @@ using Qt::StringLiterals::operator""_s;
 
 namespace {
 
-using Picked = ipc::Result<QRect>;
+template <typename T> using Future = std::future<ipc::Result<T>>;
 
 class TestIpc : public QObject {
     Q_OBJECT
@@ -31,29 +31,36 @@ private:
     QTemporaryDir m_root;
     std::unique_ptr<ipc::Server> m_server;
     QPointer<ipc::PickRegionRequest> m_request;
+    QPointer<ipc::ScreenshotRequest> m_screenshot;
 
     [[nodiscard]] QString socketPath() const { return m_root.filePath(u"caelestia/shell.sock"_s); }
 
-    [[nodiscard]] static std::future<Picked> pick(bool freeze) {
-        return std::async(std::launch::async, [freeze] {
-            return ipc::pickRegion(freeze);
+    [[nodiscard]] static Future<QRect> pick() {
+        return std::async(std::launch::async, [] {
+            return ipc::pickRegion();
         });
     }
 
-    [[nodiscard]] static bool ready(const std::future<Picked>& future) {
+    [[nodiscard]] static Future<QString> shoot(bool region, bool annotate) {
+        return std::async(std::launch::async, [region, annotate] {
+            return ipc::screenshot(region, annotate);
+        });
+    }
+
+    template <typename T> [[nodiscard]] static bool ready(const Future<T>& future) {
         return future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
     }
 
     // The server runs on this thread, so events must be pumped until the client has its reply.
-    [[nodiscard]] static Picked await(std::future<Picked>& future) {
+    template <typename T> [[nodiscard]] static ipc::Result<T> await(Future<T>& future) {
         static_cast<void>(QTest::qWaitFor([&future] {
             return ready(future);
         }));
         return future.get();
     }
 
-    [[nodiscard]] static ipc::Error errorOf(const Picked& picked) {
-        const auto* error = std::get_if<ipc::Error>(&picked);
+    template <typename T> [[nodiscard]] static ipc::Error errorOf(const ipc::Result<T>& result) {
+        const auto* error = std::get_if<ipc::Error>(&result);
         return error ? *error : ipc::Error{ 255 };
     }
 
@@ -61,6 +68,9 @@ private:
         auto server = std::make_unique<ipc::Server>();
         connect(server.get(), &ipc::Server::pickRegionRequested, this, [this](ipc::PickRegionRequest* request) {
             m_request = request;
+        });
+        connect(server.get(), &ipc::Server::screenshotRequested, this, [this](ipc::ScreenshotRequest* request) {
+            m_screenshot = request;
         });
         return server;
     }
@@ -81,17 +91,17 @@ private slots:
     void cleanup() {
         m_server.reset();
         m_request.clear();
+        m_screenshot.clear();
     }
 
     void failsWithoutServer() {
         m_server.reset();
-        QCOMPARE(errorOf(ipc::pickRegion(false)), ipc::Error::NotRunning);
+        QCOMPARE(errorOf(ipc::pickRegion()), ipc::Error::NotRunning);
     }
 
     void respondReturnsRegion() {
-        auto future = pick(true);
+        auto future = pick();
         QTRY_VERIFY(m_request);
-        QVERIFY(m_request->freeze());
 
         m_request->respond(QRect(10, 20, 300, 200));
         QTRY_VERIFY(m_request.isNull());
@@ -100,9 +110,8 @@ private slots:
     }
 
     void rejectReportsCancelled() {
-        auto future = pick(false);
+        auto future = pick();
         QTRY_VERIFY(m_request);
-        QVERIFY(!m_request->freeze());
 
         m_request->reject();
         QTRY_VERIFY(m_request.isNull());
@@ -111,10 +120,10 @@ private slots:
     }
 
     void secondPickIsBusy() {
-        auto first = pick(false);
+        auto first = pick();
         QTRY_VERIFY(m_request);
 
-        auto second = pick(false);
+        auto second = pick();
         QCOMPARE(errorOf(await(second)), ipc::Error::Busy);
 
         m_request->reject();
@@ -122,7 +131,7 @@ private slots:
     }
 
     void respondTwiceSendsOnce() {
-        auto future = pick(false);
+        auto future = pick();
         QTRY_VERIFY(m_request);
 
         auto* request = m_request.data();
@@ -134,12 +143,12 @@ private slots:
     }
 
     void serverFreesAfterResponse() {
-        auto first = pick(false);
+        auto first = pick();
         QTRY_VERIFY(m_request);
         m_request->reject();
         QCOMPARE(errorOf(await(first)), ipc::Error::Cancelled);
 
-        auto second = pick(false);
+        auto second = pick();
         QTRY_VERIFY(m_request);
         m_request->respond(QRect(0, 0, 1, 1));
         QCOMPARE(std::get<QRect>(await(second)), QRect(0, 0, 1, 1));
@@ -149,7 +158,7 @@ private slots:
         QLocalSocket client;
         client.connectToServer(socketPath());
         QVERIFY(client.waitForConnected());
-        client.write("{\"method\":\"pickRegion\",\"freeze\":false}\n");
+        client.write("{\"method\":\"pickRegion\"}\n");
         QTRY_VERIFY(m_request);
 
         const QSignalSpy cancelled(m_request.data(), &ipc::Request::cancelled);
@@ -157,7 +166,7 @@ private slots:
         QTRY_COMPARE(cancelled.size(), 1);
         QTRY_VERIFY(m_request.isNull());
 
-        auto future = pick(false);
+        auto future = pick();
         QTRY_VERIFY(m_request);
         m_request->respond(QRect(0, 0, 1, 1));
         QCOMPARE(std::get<QRect>(await(future)), QRect(0, 0, 1, 1));
@@ -170,6 +179,89 @@ private slots:
         client.write("{\"method\":\"nope\"}\n");
         QTRY_VERIFY(client.canReadLine());
         QCOMPARE(client.readLine(), "{\"error\":\"failed\"}\n");
+    }
+
+    void screenshotRespondReturnsFile() {
+        auto future = shoot(true, false);
+        QTRY_VERIFY(m_screenshot);
+        QVERIFY(m_screenshot->region());
+        QVERIFY(!m_screenshot->annotate());
+
+        m_screenshot->respond(u"/tmp/shot.png"_s);
+        QTRY_VERIFY(m_screenshot.isNull());
+
+        QCOMPARE(std::get<QString>(await(future)), u"/tmp/shot.png"_s);
+    }
+
+    void screenshotRejectReportsCancelled() {
+        auto future = shoot(false, true);
+        QTRY_VERIFY(m_screenshot);
+        QVERIFY(!m_screenshot->region());
+        QVERIFY(m_screenshot->annotate());
+
+        m_screenshot->reject();
+        QTRY_VERIFY(m_screenshot.isNull());
+
+        QCOMPARE(errorOf(await(future)), ipc::Error::Cancelled);
+    }
+
+    void secondScreenshotIsBusy() {
+        auto first = shoot(false, false);
+        QTRY_VERIFY(m_screenshot);
+
+        auto second = shoot(false, false);
+        QCOMPARE(errorOf(await(second)), ipc::Error::Busy);
+
+        m_screenshot->reject();
+        QCOMPARE(errorOf(await(first)), ipc::Error::Cancelled);
+    }
+
+    void screenshotAndPickAreIndependent() {
+        auto picking = pick();
+        QTRY_VERIFY(m_request);
+
+        auto shooting = shoot(false, false);
+        QTRY_VERIFY(m_screenshot);
+
+        m_screenshot->respond(u"/tmp/shot.png"_s);
+        QCOMPARE(std::get<QString>(await(shooting)), u"/tmp/shot.png"_s);
+        QVERIFY(m_request);
+
+        m_request->respond(QRect(1, 2, 3, 4));
+        QCOMPARE(std::get<QRect>(await(picking)), QRect(1, 2, 3, 4));
+    }
+
+    void screenshotClientDisconnectCancels() {
+        QLocalSocket client;
+        client.connectToServer(socketPath());
+        QVERIFY(client.waitForConnected());
+        client.write("{\"method\":\"screenshot\",\"region\":true,\"annotate\":true}\n");
+        QTRY_VERIFY(m_screenshot);
+        QVERIFY(m_screenshot->region());
+        QVERIFY(m_screenshot->annotate());
+
+        const QSignalSpy cancelled(m_screenshot.data(), &ipc::Request::cancelled);
+        client.disconnectFromServer();
+        QTRY_COMPARE(cancelled.size(), 1);
+        QTRY_VERIFY(m_screenshot.isNull());
+
+        auto future = shoot(false, false);
+        QTRY_VERIFY(m_screenshot);
+        m_screenshot->respond(u"/tmp/shot.png"_s);
+        QCOMPARE(std::get<QString>(await(future)), u"/tmp/shot.png"_s);
+    }
+
+    void releaseRejectsPendingScreenshot() {
+        auto future = shoot(false, false);
+        QTRY_VERIFY(m_screenshot);
+
+        QLocalSocket client;
+        client.connectToServer(socketPath());
+        QVERIFY(client.waitForConnected());
+        client.write("{\"method\":\"release\"}\n");
+
+        QCOMPARE(errorOf(await(future)), ipc::Error::Cancelled);
+        QTRY_VERIFY(!m_server->isListening());
     }
 
     // The old server lives on its own thread so the takeover handshake runs between two event loops.
@@ -197,7 +289,7 @@ private slots:
         thread.start();
         QTRY_VERIFY(old != nullptr && old->isListening());
 
-        auto pending = pick(false);
+        auto pending = pick();
         QTRY_VERIFY(picking);
 
         m_server = startServer();
@@ -215,7 +307,7 @@ private slots:
         thread.quit();
         QVERIFY(thread.wait());
 
-        auto future = pick(true);
+        auto future = pick();
         QTRY_VERIFY(m_request);
         m_request->respond(QRect(5, 6, 7, 8));
         QCOMPARE(std::get<QRect>(await(future)), QRect(5, 6, 7, 8));

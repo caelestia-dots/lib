@@ -46,16 +46,28 @@ void Request::reply(const Response& response) {
     answer(m_socket, response);
 }
 
-PickRegionRequest::PickRegionRequest(bool freeze, QLocalSocket* socket)
-    : Request(socket)
-    , m_freeze(freeze) {}
-
-bool PickRegionRequest::freeze() const {
-    return m_freeze;
-}
+PickRegionRequest::PickRegionRequest(QLocalSocket* socket)
+    : Request(socket) {}
 
 void PickRegionRequest::respond(const QRect& region) {
     reply(region);
+}
+
+ScreenshotRequest::ScreenshotRequest(bool region, bool annotate, QLocalSocket* socket)
+    : Request(socket)
+    , m_region(region)
+    , m_annotate(annotate) {}
+
+[[nodiscard]] bool ScreenshotRequest::region() const {
+    return m_region;
+}
+
+[[nodiscard]] bool ScreenshotRequest::annotate() const {
+    return m_annotate;
+}
+
+void ScreenshotRequest::respond(const QString& file) {
+    reply(file);
 }
 
 Server::Server(QObject* parent)
@@ -115,14 +127,23 @@ void Server::dispatch(QLocalSocket* socket) {
         [this, socket](const protocol::Release&) {
             release(socket);
         },
-        [this, socket](const protocol::PickRegion& pick) {
+        [this, socket](const protocol::PickRegion&) {
             if (m_pendingPick) {
                 answer(socket, Error::Busy);
                 return;
             }
 
-            m_pendingPick = new PickRegionRequest(pick.freeze, socket);
+            m_pendingPick = new PickRegionRequest(socket);
             emit pickRegionRequested(m_pendingPick);
+        },
+        [this, socket](const protocol::Screenshot& sc) {
+            if (m_pendingScreenshot) {
+                answer(socket, Error::Busy);
+                return;
+            }
+
+            m_pendingScreenshot = new ScreenshotRequest(sc.region, sc.annotate, socket);
+            emit screenshotRequested(m_pendingScreenshot);
         },
     };
     std::visit(handlers, *request);
@@ -132,6 +153,8 @@ void Server::release(QLocalSocket* socket) {
     m_server.close();
     if (m_pendingPick)
         m_pendingPick->reject();
+    if (m_pendingScreenshot)
+        m_pendingScreenshot->reject();
     m_lock.unlock();
 
     socket->disconnectFromServer();

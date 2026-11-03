@@ -21,12 +21,17 @@ import QtQml
 import Caelestia.Ipc
 
 QtObject {
-    property bool freeze
+    property bool region
+    property bool annotate
 
-    Component.onCompleted: IpcServer.pickRegionRequested.connect(request => {
-        freeze = request.freeze;
-        request.respond(Qt.rect(10, 20, 300, 200));
-    })
+    Component.onCompleted: {
+        IpcServer.pickRegionRequested.connect(request => request.respond(Qt.rect(10, 20, 300, 200)));
+        IpcServer.screenshotRequested.connect(request => {
+            region = request.region;
+            annotate = request.annotate;
+            request.respond("/tmp/shot.png");
+        });
+    }
 }
 )";
 
@@ -35,6 +40,8 @@ class TestQml : public QObject {
 
 private:
     QTemporaryDir m_root;
+    std::unique_ptr<QQmlEngine> m_engine;
+    std::unique_ptr<QObject> m_shell;
 
 private slots:
 
@@ -44,24 +51,43 @@ private slots:
         qputenv("XDG_RUNTIME_DIR", m_root.path().toUtf8());
     }
 
-    void respondsThroughQml() {
-        QQmlEngine engine;
-        engine.addImportPath(QStringLiteral(CAELESTIA_QML_DIR));
+    void init() {
+        m_engine = std::make_unique<QQmlEngine>();
+        m_engine->addImportPath(QStringLiteral(CAELESTIA_QML_DIR));
 
-        QQmlComponent component(&engine);
+        QQmlComponent component(m_engine.get());
         component.setData(k_shell, QUrl());
-        const std::unique_ptr<QObject> shell(component.create());
-        QVERIFY2(shell, qPrintable(component.errorString()));
+        m_shell.reset(component.create());
+        QVERIFY2(m_shell, qPrintable(component.errorString()));
+    }
 
+    void cleanup() {
+        m_shell.reset();
+        m_engine.reset();
+    }
+
+    void pickRegionThroughQml() {
         auto future = std::async(std::launch::async, [] {
-            return ipc::pickRegion(true);
+            return ipc::pickRegion();
         });
         QTRY_VERIFY(future.wait_for(std::chrono::seconds(0)) == std::future_status::ready);
 
         const auto result = future.get();
         QVERIFY(std::holds_alternative<QRect>(result));
         QCOMPARE(std::get<QRect>(result), QRect(10, 20, 300, 200));
-        QVERIFY(shell->property("freeze").toBool());
+    }
+
+    void screenshotThroughQml() {
+        auto future = std::async(std::launch::async, [] {
+            return ipc::screenshot(true, false);
+        });
+        QTRY_VERIFY(future.wait_for(std::chrono::seconds(0)) == std::future_status::ready);
+
+        const auto result = future.get();
+        QVERIFY(std::holds_alternative<QString>(result));
+        QCOMPARE(std::get<QString>(result), QStringLiteral("/tmp/shot.png"));
+        QVERIFY(m_shell->property("region").toBool());
+        QVERIFY(!m_shell->property("annotate").toBool());
     }
 };
 
