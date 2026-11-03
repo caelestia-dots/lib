@@ -62,21 +62,6 @@ private slots:
         QVERIFY(!screenshot::preferredShmFormat({}).has_value());
     }
 
-    void preferredFormatPrefersAlphaOnRequest() {
-        QCOMPARE(screenshot::preferredShmFormat({ WL_SHM_FORMAT_XRGB8888, WL_SHM_FORMAT_ARGB8888 }, true),
-            std::optional<uint32_t>(WL_SHM_FORMAT_ARGB8888));
-        QCOMPARE(screenshot::preferredShmFormat({ WL_SHM_FORMAT_XRGB8888 }, true),
-            std::optional<uint32_t>(WL_SHM_FORMAT_XRGB8888));
-    }
-
-    void blankDetection() {
-        QImage image(4, 3, QImage::Format_ARGB32_Premultiplied);
-        image.fill(Qt::transparent);
-        QVERIFY(screenshot::isBlank(image));
-        image.setPixel(3, 2, 0x01000000);
-        QVERIFY(!screenshot::isBlank(image));
-    }
-
     void imageFormatMapping() {
         QCOMPARE(screenshot::imageFormat(WL_SHM_FORMAT_XRGB8888), QImage::Format_RGB32);
         QCOMPARE(screenshot::imageFormat(WL_SHM_FORMAT_ARGB8888), QImage::Format_ARGB32_Premultiplied);

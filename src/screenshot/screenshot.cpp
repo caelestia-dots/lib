@@ -1,16 +1,11 @@
 #include "caelestia/screenshot/screenshot.hpp"
 
 #include <qguiapplication.h>
-#include <qpointer.h>
 #include <qscreen.h>
 #include <qscreen_platform.h>
 
-#include <memory>
-#include <utility>
-
 #include "capture.hpp"
 #include "image.hpp"
-#include "workspace.hpp"
 
 namespace caelestia::screenshot {
 
@@ -20,49 +15,14 @@ QFuture<QImage> failed() {
     return QtFuture::makeReadyValueFuture(QImage());
 }
 
-wl_output* outputOf(const QScreen* screen) {
+QFuture<QImage> captureScreen(Globals& globals, const QScreen* screen) {
     const auto* native = screen ? screen->nativeInterface<QNativeInterface::QWaylandScreen>() : nullptr;
-    return native ? native->output() : nullptr;
-}
-
-QFuture<QImage> captureOutput(Globals& globals, const QSize& size, wl_output* output) {
-    return (new Capture(globals, globals.sourceManager().create_source(output), size))->future();
-}
-
-QFuture<QImage> captureWorkspace(
-    Globals& globals, const QScreen* screen, wl_output* output, std::shared_ptr<WorkspaceSnapshot> workspaces) {
-    const auto name = screen->name();
-    const auto size = screen->size();
-    auto* const workspace = workspaces->activeWorkspace(output);
-    if (workspace == nullptr) {
-        qCWarning(lcScreenshot) << "No visible workspace for" << name << "- capturing output instead";
-        return captureOutput(globals, size, output);
-    }
-
-    auto* const source = globals.workspaceSourceManager().create_source(
-        workspace, QtWayland::hyprland_workspace_image_capture_source_manager_v1::capture_mode_everything);
-    return (new Capture(globals, source, size, std::move(workspaces)))
-        ->future()
-        .then([&globals, guard = QPointer<const QScreen>(screen), name, size](const QImage& image) {
-            if (!image.isNull())
-                return QtFuture::makeReadyValueFuture(image);
-            qCWarning(lcScreenshot) << "Workspace capture failed for" << name << "- capturing output instead";
-            auto* const output = outputOf(guard);
-            return output ? captureOutput(globals, size, output) : failed();
-        })
-        .unwrap();
-}
-
-QFuture<QImage> captureScreen(Globals& globals, const QScreen* screen, std::shared_ptr<WorkspaceSnapshot> workspaces) {
-    auto* const output = outputOf(screen);
-    if (output == nullptr) {
+    if (native == nullptr) {
         qCWarning(lcScreenshot) << "Screen is not a Wayland output";
         return failed();
     }
 
-    if (workspaces)
-        return captureWorkspace(globals, screen, output, std::move(workspaces));
-    return captureOutput(globals, screen->size(), output);
+    return (new Capture(globals, native->output(), screen->size()))->future();
 }
 
 Globals* globalsIfSupported() {
@@ -76,6 +36,14 @@ bool isSupported() {
     return globalsIfSupported() != nullptr;
 }
 
+QFuture<QImage> capture() {
+    QRect region;
+    const auto screens = QGuiApplication::screens();
+    for (const auto* screen : screens)
+        region |= screen->geometry();
+    return capture(region);
+}
+
 QFuture<QImage> capture(const QScreen* screen) {
     auto* const globals = globalsIfSupported();
     if (globals == nullptr) {
@@ -83,7 +51,7 @@ QFuture<QImage> capture(const QScreen* screen) {
         return failed();
     }
 
-    return captureScreen(*globals, screen, globals->snapshotWorkspaces());
+    return captureScreen(*globals, screen);
 }
 
 QFuture<QImage> capture(const QRect& region) {
@@ -105,12 +73,11 @@ QFuture<QImage> capture(const QRect& region) {
         return failed();
     }
 
-    const std::shared_ptr<WorkspaceSnapshot> workspaces = globals->snapshotWorkspaces();
     QList<QRect> geometries;
     QList<QFuture<QImage>> futures;
     for (const auto* screen : std::as_const(intersecting)) {
         geometries << screen->geometry();
-        futures << captureScreen(*globals, screen, workspaces);
+        futures << captureScreen(*globals, screen);
     }
 
     return QtFuture::whenAll(futures.begin(), futures.end())

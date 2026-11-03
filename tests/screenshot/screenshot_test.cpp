@@ -31,6 +31,12 @@ private slots:
         QVERIFY(future.result().isNull());
     }
 
+    void allScreensFailsOffscreen() {
+        const auto future = screenshot::capture();
+        QVERIFY(future.isFinished());
+        QVERIFY(future.result().isNull());
+    }
+
     void regionFailsOffscreen() {
         const auto future = screenshot::capture(QGuiApplication::primaryScreen()->geometry());
         QVERIFY(future.isFinished());

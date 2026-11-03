@@ -10,6 +10,7 @@ namespace caelestia::screenshot {
 
 [[nodiscard]] bool isSupported();
 
+[[nodiscard]] QFuture<QImage> capture();
 [[nodiscard]] QFuture<QImage> capture(const QScreen* screen);
 [[nodiscard]] QFuture<QImage> capture(const QRect& region);
 

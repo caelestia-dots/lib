@@ -10,10 +10,8 @@
 #include <algorithm>
 #include <cerrno>
 #include <cstring>
-#include <utility>
 
 #include "image.hpp"
-#include "workspace.hpp"
 
 namespace caelestia::screenshot {
 
@@ -34,8 +32,7 @@ Globals* Globals::instance() {
 }
 
 Globals::Globals(wl_display* display)
-    : m_display(display)
-    , m_registry(wl_display_get_registry(display)) {
+    : m_registry(wl_display_get_registry(display)) {
     static const wl_registry_listener k_listener{
         .global = handleGlobal,
         .global_remove = handleGlobalRemove,
@@ -48,10 +45,6 @@ bool Globals::supported() const {
     return m_shm != nullptr && m_sourceManager.isInitialized() && m_captureManager.isInitialized();
 }
 
-bool Globals::workspaceCaptureSupported() const {
-    return supported() && m_workspaceManagerName != 0 && m_workspaceSourceManager.isInitialized();
-}
-
 wl_shm* Globals::shm() const {
     return m_shm;
 }
@@ -60,18 +53,8 @@ QtWayland::ext_output_image_capture_source_manager_v1& Globals::sourceManager() 
     return m_sourceManager;
 }
 
-QtWayland::hyprland_workspace_image_capture_source_manager_v1& Globals::workspaceSourceManager() {
-    return m_workspaceSourceManager;
-}
-
 QtWayland::ext_image_copy_capture_manager_v1& Globals::captureManager() {
     return m_captureManager;
-}
-
-std::unique_ptr<WorkspaceSnapshot> Globals::snapshotWorkspaces() const {
-    if (!workspaceCaptureSupported())
-        return nullptr;
-    return std::make_unique<WorkspaceSnapshot>(m_display, m_registry, m_workspaceManagerName);
 }
 
 void Globals::handleGlobal(void* data, wl_registry* registry, uint32_t name, const char* interface, uint32_t version) {
@@ -84,18 +67,12 @@ void Globals::handleGlobal(void* data, wl_registry* registry, uint32_t name, con
         self->m_sourceManager.init(registry, name, bindVersion);
     else if (std::strcmp(interface, QtWayland::ext_image_copy_capture_manager_v1::interface()->name) == 0)
         self->m_captureManager.init(registry, name, bindVersion);
-    else if (std::strcmp(interface, QtWayland::hyprland_workspace_image_capture_source_manager_v1::interface()->name) ==
-             0)
-        self->m_workspaceSourceManager.init(registry, name, bindVersion);
-    else if (std::strcmp(interface, QtWayland::ext_workspace_manager_v1::interface()->name) == 0)
-        self->m_workspaceManagerName = name;
 }
 
 void Globals::handleGlobalRemove(void* data, wl_registry* registry, uint32_t name) {
+    Q_UNUSED(data);
     Q_UNUSED(registry);
-    auto* const self = static_cast<Globals*>(data);
-    if (name == self->m_workspaceManagerName)
-        self->m_workspaceManagerName = 0;
+    Q_UNUSED(name);
 }
 
 ShmBuffer::ShmBuffer(wl_shm* shm, int width, int height, uint32_t format)
@@ -161,12 +138,10 @@ int ShmBuffer::stride() const {
     return m_stride;
 }
 
-Capture::Capture(Globals& globals, ext_image_capture_source_v1* source, const QSize& logicalSize,
-    std::shared_ptr<WorkspaceSnapshot> workspaces)
+Capture::Capture(Globals& globals, wl_output* output, const QSize& logicalSize)
     : m_shm(globals.shm())
     , m_logicalSize(logicalSize)
-    , m_workspaces(std::move(workspaces))
-    , m_source(source) {
+    , m_source(globals.sourceManager().create_source(output)) {
     m_promise.start();
     ext_image_copy_capture_session_v1::init(globals.captureManager().create_session(m_source, 0));
 }
@@ -203,7 +178,7 @@ void Capture::ext_image_copy_capture_session_v1_done() {
     if (m_done || ext_image_copy_capture_frame_v1::isInitialized())
         return;
 
-    const auto chosen = preferredShmFormat(m_formats, m_workspaces != nullptr);
+    const auto chosen = preferredShmFormat(m_formats);
     if (!chosen || m_width <= 0 || m_height <= 0) {
         fail("no usable buffer format");
         return;
@@ -233,11 +208,6 @@ void Capture::ext_image_copy_capture_frame_v1_transform(uint32_t transform) {
 void Capture::ext_image_copy_capture_frame_v1_ready() {
     const QImage raw(
         m_buffer->data(), m_buffer->width(), m_buffer->height(), m_buffer->stride(), imageFormat(m_format));
-    if (m_workspaces && raw.hasAlphaChannel() && isBlank(raw)) {
-        fail("workspace capture is empty");
-        return;
-    }
-
     auto image = applyTransform(raw.copy(), m_transform);
     image.setDevicePixelRatio(static_cast<qreal>(image.width()) / m_logicalSize.width());
     finish(image);

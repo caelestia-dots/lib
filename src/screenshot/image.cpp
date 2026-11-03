@@ -25,17 +25,10 @@ constexpr FormatMapping k_formats[] = {
 
 } // namespace
 
-std::optional<uint32_t> preferredShmFormat(const QList<uint32_t>& offered, bool preferAlpha) {
-    const auto usable = [&offered](const FormatMapping& mapping) {
+std::optional<uint32_t> preferredShmFormat(const QList<uint32_t>& offered) {
+    const auto* chosen = std::ranges::find_if(k_formats, [&offered](const FormatMapping& mapping) {
         return offered.contains(mapping.shm);
-    };
-    const auto usableWithAlpha = [&usable](const FormatMapping& mapping) {
-        return usable(mapping) && QImage::toPixelFormat(mapping.image).alphaUsage() == QPixelFormat::UsesAlpha;
-    };
-
-    const auto* chosen = preferAlpha ? std::ranges::find_if(k_formats, usableWithAlpha) : std::end(k_formats);
-    if (chosen == std::end(k_formats))
-        chosen = std::ranges::find_if(k_formats, usable);
+    });
     if (chosen == std::end(k_formats))
         return std::nullopt;
     return chosen->shm;
@@ -47,17 +40,6 @@ QImage::Format imageFormat(uint32_t shmFormat) {
             return image;
     }
     return QImage::Format_Invalid;
-}
-
-bool isBlank(const QImage& image) {
-    for (int y = 0; y < image.height(); ++y) {
-        const auto* line = reinterpret_cast<const quint32*>(image.constScanLine(y));
-        if (!std::all_of(line, line + image.width(), [](quint32 pixel) {
-                return pixel == 0;
-            }))
-            return false;
-    }
-    return true;
 }
 
 QImage applyTransform(const QImage& image, uint32_t transform) {
