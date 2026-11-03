@@ -1,15 +1,23 @@
 #include "caelestia/screenshot/screenshot.hpp"
 
+#include <qbuffer.h>
+#include <qdatetime.h>
 #include <qguiapplication.h>
 #include <qscreen.h>
 #include <qscreen_platform.h>
 
+#include "caelestia/utils/cache.hpp"
 #include "capture.hpp"
 #include "image.hpp"
 
 namespace caelestia::screenshot {
 
+using Qt::StringLiterals::operator""_s;
+
 namespace {
+
+const QStringView k_cacheExt = u".png";
+const int k_cacheVersion = 1;
 
 QFuture<QImage> failed() {
     return QtFuture::makeReadyValueFuture(QImage());
@@ -28,6 +36,11 @@ QFuture<QImage> captureScreen(Globals& globals, const QScreen* screen) {
 Globals* globalsIfSupported() {
     auto* const globals = Globals::instance();
     return globals != nullptr && globals->supported() ? globals : nullptr;
+}
+
+utils::FileCache& imageCache() {
+    static utils::FileCache s_cache(u"screenshots"_s, 512ll * 1024 * 1024, k_cacheExt.toString(), k_cacheVersion);
+    return s_cache;
 }
 
 } // namespace
@@ -86,6 +99,22 @@ QFuture<QImage> capture(const QRect& region) {
             for (const auto& result : results)
                 parts << result.result();
             return composite(region, geometries, parts);
+        });
+}
+
+QFuture<QString> cache(const QImage& image) {
+    const auto key = QString::number(QDateTime::currentMSecsSinceEpoch());
+    return imageCache()
+        .store(key,
+            [image] {
+                QByteArray bytes;
+                QBuffer buffer(&bytes);
+                buffer.open(QIODevice::WriteOnly);
+                image.save(&buffer, "PNG");
+                return bytes;
+            })
+        .then([key](bool) {
+            return imageCache().dir() + u'/' + key + k_cacheExt;
         });
 }
 

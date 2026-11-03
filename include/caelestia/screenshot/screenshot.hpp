@@ -14,4 +14,6 @@ namespace caelestia::screenshot {
 [[nodiscard]] QFuture<QImage> capture(const QScreen* screen);
 [[nodiscard]] QFuture<QImage> capture(const QRect& region);
 
+[[nodiscard]] QFuture<QString> cache(const QImage& image);
+
 } // namespace caelestia::screenshot

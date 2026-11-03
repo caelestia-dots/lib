@@ -24,6 +24,7 @@ target_include_directories(caelestia-screenshot SYSTEM PRIVATE "${CMAKE_CURRENT_
 target_link_libraries(caelestia-screenshot
     PUBLIC
         caelestia-headers
+        caelestia-utils
         Qt::Core
         Qt::Gui
     PRIVATE
