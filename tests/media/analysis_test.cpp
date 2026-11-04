@@ -5,6 +5,7 @@
 #include <qtest.h>
 
 #include "caelestia/media/analysis.hpp"
+#include "caelestia/media/video.hpp"
 #include "analysiscache.hpp"
 #include "common.hpp"
 #include "videopixels.hpp"
@@ -137,6 +138,23 @@ private slots:
         QVERIFY(analysis.colours.first() != k_otherColour);
         QVERIFY(closeTo(analysis.colours.first(), k_sourceColour));
     }
+
+    void videoFrameFromVideo() {
+        const auto path = QFINDTESTDATA("data/video.mp4");
+        QVERIFY(!path.isEmpty());
+
+        const auto native = videoFrame(path);
+        QVERIFY(!native.isNull());
+        QVERIFY(closeTo(native.pixelColor(native.width() / 2, native.height() / 2), k_otherColour));
+
+        const auto fit = videoFrame(path, QSize(4, 4), Qt::IgnoreAspectRatio);
+        QCOMPARE(fit.size(), QSize(4, 4));
+
+        const auto large = videoFrame(path, native.size() * 2);
+        QCOMPARE(large.size(), native.size());
+    }
+
+    void videoFrameFromMissingPath() { QVERIFY(videoFrame(m_root.filePath(u"missing.mp4"_s)).isNull()); }
 
     void analysisFromMissingPath() {
         QVERIFY(sameAnalysis(analyseForPath(m_root.filePath(u"missing.png"_s)).result(), Analysis{}));

@@ -13,6 +13,8 @@ extern "C" {
 #include <cmath>
 #include <memory>
 
+#include "caelestia/media/video.hpp"
+
 namespace caelestia::media {
 
 namespace {
@@ -135,6 +137,22 @@ private:
     [[nodiscard]] AVStream* stream() const { return m_format->streams[m_streamIndex]; }
 };
 
+using Scaler = std::unique_ptr<SwsContext, SwsContextDeleter>;
+
+// Converts frame to BGRA at size into dst, reusing scaler across calls
+bool scaleFrame(Scaler& scaler, const AVFrame* frame, const QSize& size, std::uint8_t* dst, int stride) {
+    scaler.reset(
+        sws_getCachedContext(scaler.release(), frame->width, frame->height, static_cast<AVPixelFormat>(frame->format),
+            size.width(), size.height(), AV_PIX_FMT_BGRA, SWS_BILINEAR, nullptr, nullptr, nullptr));
+    if (!scaler)
+        return false;
+
+    std::uint8_t* const dsts[] = { dst };
+    const int strides[] = { stride };
+    sws_scale(scaler.get(), frame->data, frame->linesize, 0, frame->height, dsts, strides);
+    return true;
+}
+
 } // namespace
 
 std::vector<m3colours::Argb> videoPixels(const QString& path, int samples, std::size_t pixelsPerFrame) {
@@ -143,7 +161,7 @@ std::vector<m3colours::Argb> videoPixels(const QString& path, int samples, std::
         return {};
 
     std::vector<m3colours::Argb> pixels;
-    std::unique_ptr<SwsContext, SwsContextDeleter> scaler;
+    Scaler scaler;
     std::vector<QRgb> scaled;
     const auto interval = decoder.duration() / samples;
 
@@ -153,21 +171,36 @@ std::vector<m3colours::Argb> videoPixels(const QString& path, int samples, std::
             break;
 
         const auto size = sampleSize(frame->width, frame->height, pixelsPerFrame);
-        scaler.reset(sws_getCachedContext(scaler.release(), frame->width, frame->height,
-            static_cast<AVPixelFormat>(frame->format), size.width(), size.height(), AV_PIX_FMT_BGRA, SWS_BILINEAR,
-            nullptr, nullptr, nullptr));
-        if (!scaler)
-            break;
-
         scaled.resize(static_cast<std::size_t>(size.width()) * static_cast<std::size_t>(size.height()));
-        std::uint8_t* const dst[] = { reinterpret_cast<std::uint8_t*>(scaled.data()) };
-        const int stride[] = { size.width() * static_cast<int>(sizeof(QRgb)) };
-        sws_scale(scaler.get(), frame->data, frame->linesize, 0, frame->height, dst, stride);
+        if (!scaleFrame(scaler, frame, size, reinterpret_cast<std::uint8_t*>(scaled.data()),
+                size.width() * static_cast<int>(sizeof(QRgb))))
+            break;
 
         const auto* bits = reinterpret_cast<const m3colours::Argb*>(scaled.data());
         pixels.insert(pixels.end(), bits, bits + scaled.size());
     }
     return pixels;
+}
+
+QImage videoFrame(const QString& path, const QSize& size, Qt::AspectRatioMode mode) {
+    VideoDecoder decoder(path);
+    if (!decoder.isValid())
+        return {};
+
+    const auto* frame = decoder.frameNear(0, 0);
+    if (!frame)
+        return {};
+
+    const QSize native(frame->width, frame->height);
+    auto target = size.isEmpty() ? native : native.scaled(size, mode);
+    if (target.width() > native.width() || target.height() > native.height())
+        target = native;
+
+    QImage image(target, QImage::Format_ARGB32);
+    Scaler scaler;
+    if (image.isNull() || !scaleFrame(scaler, frame, target, image.bits(), static_cast<int>(image.bytesPerLine())))
+        return {};
+    return image;
 }
 
 QSize sampleSize(int width, int height, std::size_t targetPixels) {
