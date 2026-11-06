@@ -20,6 +20,7 @@ constexpr int k_releaseTimeoutMs = 1000;
 constexpr int k_lockTimeoutMs = 5000;
 
 void answer(QLocalSocket* socket, const Response& response) {
+    qCDebug(lcIpc) << "Answering" << socket << protocol::encode(response).trimmed();
     socket->write(protocol::encode(response));
     socket->disconnectFromServer();
 }
@@ -30,8 +31,10 @@ Request::Request(QLocalSocket* socket)
     : QObject(socket)
     , m_socket(socket) {
     connect(socket, &QLocalSocket::disconnected, this, [this] {
-        if (!std::exchange(m_done, true))
+        if (!std::exchange(m_done, true)) {
+            qCDebug(lcIpc) << "Request cancelled by client" << m_socket;
             emit cancelled();
+        }
     });
 }
 
@@ -132,6 +135,7 @@ Server::Server(QObject* parent)
     }
 
     connect(&m_server, &QLocalServer::newConnection, this, &Server::accept);
+    qCDebug(lcIpc) << "Listening on" << protocol::socketPath();
 }
 
 bool Server::isListening() const {
@@ -141,9 +145,12 @@ bool Server::isListening() const {
 void Server::releaseExisting() {
     QLocalSocket socket;
     socket.connectToServer(protocol::socketPath());
-    if (!socket.waitForConnected(k_releaseTimeoutMs))
+    if (!socket.waitForConnected(k_releaseTimeoutMs)) {
+        qCDebug(lcIpc) << "No existing shell on" << protocol::socketPath();
         return;
+    }
 
+    qCDebug(lcIpc) << "Releasing existing shell on" << protocol::socketPath();
     socket.write(protocol::encode(protocol::Release{}));
     if (!socket.waitForDisconnected(k_releaseTimeoutMs))
         qCWarning(lcIpc) << "Existing shell did not release the socket";
@@ -151,6 +158,7 @@ void Server::releaseExisting() {
 
 void Server::accept() {
     while (auto* const socket = m_server.nextPendingConnection()) {
+        qCDebug(lcIpc) << "Accepted connection" << socket;
         connect(socket, &QLocalSocket::disconnected, socket, &QObject::deleteLater);
         connect(socket, &QLocalSocket::readyRead, this, [this, socket] {
             if (socket->canReadLine())
@@ -161,8 +169,11 @@ void Server::accept() {
 
 void Server::dispatch(QLocalSocket* socket) {
     socket->disconnect(this);
-    const auto request = protocol::decodeRequest(socket->readLine());
+    const auto line = socket->readLine();
+    qCDebug(lcIpc) << "Received from" << socket << line.trimmed();
+    const auto request = protocol::decodeRequest(line);
     if (!request) {
+        qCDebug(lcIpc) << "Failed to decode request from" << socket;
         answer(socket, Error::Failed);
         return;
     }
@@ -174,6 +185,7 @@ void Server::dispatch(QLocalSocket* socket) {
         [this, socket](const protocol::PickRegion&) {
             // Pick/screenshot are exclusive
             if (m_pendingPick || m_pendingScreenshot) {
+                qCDebug(lcIpc) << "Rejecting pickRegion: busy";
                 answer(socket, Error::Busy);
                 return;
             }
@@ -183,6 +195,7 @@ void Server::dispatch(QLocalSocket* socket) {
         },
         [this, socket](const protocol::Screenshot& sc) {
             if (m_pendingPick || m_pendingScreenshot) {
+                qCDebug(lcIpc) << "Rejecting screenshot: busy";
                 answer(socket, Error::Busy);
                 return;
             }
@@ -192,6 +205,7 @@ void Server::dispatch(QLocalSocket* socket) {
         },
         [this, socket](const protocol::Annotate& an) {
             if (m_pendingAnnotate) {
+                qCDebug(lcIpc) << "Rejecting annotate: busy";
                 answer(socket, Error::Busy);
                 return;
             }
@@ -210,6 +224,7 @@ void Server::dispatch(QLocalSocket* socket) {
 }
 
 void Server::release(QLocalSocket* socket) {
+    qCDebug(lcIpc) << "Release requested by" << socket;
     m_server.close();
     if (m_pendingPick)
         m_pendingPick->reject();
