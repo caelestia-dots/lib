@@ -8,3 +8,7 @@ if(BUILD_QML)
     add_dependencies(test-ipc-qml caelestia-ipc-qml)
     add_test(NAME ipc_qml COMMAND test_ipc_qml)
 endif()
+
+add_executable(ipc-manual manual.cpp)
+set_target_properties(ipc-manual PROPERTIES OUTPUT_NAME manual)
+target_link_libraries(ipc-manual PRIVATE caelestia-ipc caelestia-config)
