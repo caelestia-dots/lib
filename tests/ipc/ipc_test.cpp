@@ -1,3 +1,4 @@
+#include <qelapsedtimer.h>
 #include <qlocalsocket.h>
 #include <qpointer.h>
 #include <qsignalspy.h>
@@ -470,6 +471,32 @@ private slots:
             Qt::BlockingQueuedConnection);
         thread.quit();
         QVERIFY(thread.wait());
+
+        auto future = pick();
+        QTRY_VERIFY(m_request);
+        m_request->respond(QRect(5, 6, 7, 8));
+        QCOMPARE(std::get<QRect>(await(future)), QRect(5, 6, 7, 8));
+    }
+
+    void newServerTakesOverInProcess() {
+        auto old = std::move(m_server);
+        bool released = false;
+        connect(old.get(), &ipc::Server::released, old.get(), [&released] {
+            released = true;
+        });
+
+        auto pending = pick();
+        QTRY_VERIFY(m_request);
+
+        QElapsedTimer timer;
+        timer.start();
+        m_server = startServer();
+        QVERIFY(timer.elapsed() < 500);
+        QVERIFY(m_server->isListening());
+        QVERIFY(released);
+        QVERIFY(!old->isListening());
+        QCOMPARE(errorOf(await(pending)), ipc::Error::Cancelled);
+        old.reset();
 
         auto future = pick();
         QTRY_VERIFY(m_request);

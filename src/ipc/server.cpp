@@ -3,6 +3,7 @@
 #include <qdir.h>
 #include <qlocalsocket.h>
 #include <qloggingcategory.h>
+#include <qthread.h>
 
 #include <utility>
 #include <variant>
@@ -135,7 +136,13 @@ Server::Server(QObject* parent)
     }
 
     connect(&m_server, &QLocalServer::newConnection, this, &Server::accept);
+    s_current = this;
     qCDebug(lcIpc) << "Listening on" << protocol::socketPath();
+}
+
+Server::~Server() {
+    if (s_current == this)
+        s_current = nullptr;
 }
 
 bool Server::isListening() const {
@@ -143,6 +150,12 @@ bool Server::isListening() const {
 }
 
 void Server::releaseExisting() {
+    if (s_current && s_current->thread() == QThread::currentThread()) {
+        qCDebug(lcIpc) << "Releasing existing shell in process";
+        s_current->release(nullptr);
+        return;
+    }
+
     QLocalSocket socket;
     socket.connectToServer(protocol::socketPath());
     if (!socket.waitForConnected(k_releaseTimeoutMs)) {
@@ -237,8 +250,11 @@ void Server::release(QLocalSocket* socket) {
             request->reject();
     }
     m_lock.unlock();
+    if (s_current == this)
+        s_current = nullptr;
 
-    socket->disconnectFromServer();
+    if (socket)
+        socket->disconnectFromServer();
     emit released();
 }
 

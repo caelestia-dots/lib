@@ -117,6 +117,7 @@ class Server : public QObject {
 
 public:
     explicit Server(QObject* parent = nullptr);
+    ~Server() override;
 
     [[nodiscard]] bool isListening() const;
 
@@ -128,6 +129,8 @@ signals:
     void released();
 
 private:
+    inline static Server* s_current = nullptr;
+
     QLockFile m_lock;
     QLocalServer m_server;
     QPointer<PickRegionRequest> m_pendingPick;
