@@ -10,12 +10,15 @@
 
 namespace caelestia::ipc {
 
+Q_NAMESPACE
+
 enum class Error : quint8 {
     NotRunning,
     Busy,
     Cancelled,
     Failed,
 };
+Q_ENUM_NS(Error)
 
 namespace FileFilter {
 

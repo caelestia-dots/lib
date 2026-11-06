@@ -18,7 +18,7 @@ class Request : public QObject {
     Q_OBJECT
 
 public:
-    Q_INVOKABLE void reject();
+    Q_INVOKABLE void reject(caelestia::ipc::Error error = Error::Cancelled);
 
 signals:
     void cancelled();

@@ -149,6 +149,16 @@ private slots:
         QCOMPARE(errorOf(await(future)), ipc::Error::Cancelled);
     }
 
+    void rejectWithErrorReportsIt() {
+        auto future = pick();
+        QTRY_VERIFY(m_request);
+
+        m_request->reject(ipc::Error::Failed);
+        QTRY_VERIFY(m_request.isNull());
+
+        QCOMPARE(errorOf(await(future)), ipc::Error::Failed);
+    }
+
     void secondPickIsBusy() {
         auto first = pick();
         QTRY_VERIFY(m_request);

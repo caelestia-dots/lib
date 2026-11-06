@@ -39,8 +39,8 @@ Request::Request(QLocalSocket* socket)
     });
 }
 
-void Request::reject() {
-    reply(Error::Cancelled);
+void Request::reject(Error error) {
+    reply(error);
 }
 
 void Request::reply(const Response& response) {

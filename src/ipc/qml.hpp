@@ -33,6 +33,12 @@ struct AnnotateRequestForeign {
     QML_UNCREATABLE("Created by IpcServer when a client requests an annotation")
 };
 
+struct ErrorForeign {
+    Q_GADGET
+    QML_FOREIGN_NAMESPACE(caelestia::ipc)
+    QML_NAMED_ELEMENT(IpcError)
+};
+
 struct FileFilterForeign {
     Q_GADGET
     QML_FOREIGN_NAMESPACE(caelestia::ipc::FileFilter)

@@ -30,9 +30,15 @@ QtObject {
     property string pickInitialDir
     property string pickInitialName
     property int pickMode
+    property bool failPick
 
     property IpcServer server: IpcServer {
-        onPickRegionRequested: request => request.respond(Qt.rect(10, 20, 300, 200))
+        onPickRegionRequested: request => {
+            if (failPick)
+                request.reject(IpcError.Failed);
+            else
+                request.respond(Qt.rect(10, 20, 300, 200));
+        }
         onScreenshotRequested: request => {
             region = request.region;
             annotate = request.annotate;
@@ -95,6 +101,19 @@ private slots:
         const auto result = future.get();
         QVERIFY(std::holds_alternative<QRect>(result));
         QCOMPARE(std::get<QRect>(result), QRect(10, 20, 300, 200));
+    }
+
+    void rejectWithErrorThroughQml() {
+        m_shell->setProperty("failPick", true);
+
+        auto future = std::async(std::launch::async, [] {
+            return ipc::pickRegion();
+        });
+        QTRY_VERIFY(future.wait_for(std::chrono::seconds(0)) == std::future_status::ready);
+
+        const auto result = future.get();
+        QVERIFY(std::holds_alternative<ipc::Error>(result));
+        QCOMPARE(std::get<ipc::Error>(result), ipc::Error::Failed);
     }
 
     void screenshotThroughQml() {
