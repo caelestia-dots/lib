@@ -31,18 +31,18 @@ QtObject {
     property string pickInitialName
     property int pickMode
 
-    Component.onCompleted: {
-        IpcServer.pickRegionRequested.connect(request => request.respond(Qt.rect(10, 20, 300, 200)));
-        IpcServer.screenshotRequested.connect(request => {
+    property IpcServer server: IpcServer {
+        onPickRegionRequested: request => request.respond(Qt.rect(10, 20, 300, 200))
+        onScreenshotRequested: request => {
             region = request.region;
             annotate = request.annotate;
             request.respond("/tmp/shot.png");
-        });
-        IpcServer.annotateRequested.connect(request => {
+        }
+        onAnnotateRequested: request => {
             annotated = request.file;
             request.respond(request.file + ".edited.png");
-        });
-        IpcServer.pickFileRequested.connect(request => {
+        }
+        onPickFileRequested: request => {
             pickTitle = request.title;
             pickNameFilters = request.nameFilters;
             pickFilter = request.filter;
@@ -50,7 +50,7 @@ QtObject {
             pickInitialName = request.initialName;
             pickMode = request.mode;
             request.respond("/tmp/picked.png");
-        });
+        }
     }
 }
 )";

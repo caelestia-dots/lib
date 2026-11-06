@@ -56,7 +56,6 @@ struct ServerForeign {
     Q_GADGET
     QML_FOREIGN(caelestia::ipc::Server)
     QML_NAMED_ELEMENT(IpcServer)
-    QML_SINGLETON
 };
 
 } // namespace caelestia::ipc::qml
