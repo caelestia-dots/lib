@@ -113,8 +113,8 @@ QFuture<QString> cache(const QImage& image) {
                 image.save(&buffer, "PNG");
                 return bytes;
             })
-        .then([key](bool) {
-            return imageCache().dir() + u'/' + key + k_cacheExt;
+        .then([key](bool stored) {
+            return stored ? imageCache().dir() + u'/' + key + k_cacheExt : QString();
         });
 }
 
