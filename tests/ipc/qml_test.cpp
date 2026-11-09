@@ -123,8 +123,9 @@ private slots:
         QTRY_VERIFY(future.wait_for(std::chrono::seconds(0)) == std::future_status::ready);
 
         const auto result = future.get();
-        QVERIFY(std::holds_alternative<QString>(result));
-        QCOMPARE(std::get<QString>(result), QStringLiteral("/tmp/shot.png"));
+        QVERIFY(std::holds_alternative<ipc::SaveResult>(result));
+        QCOMPARE(std::get<ipc::SaveResult>(result).file, QStringLiteral("/tmp/shot.png"));
+        QVERIFY(!std::get<ipc::SaveResult>(result).copied);
         QVERIFY(m_shell->property("region").toBool());
         QVERIFY(!m_shell->property("annotate").toBool());
     }
@@ -136,8 +137,9 @@ private slots:
         QTRY_VERIFY(future.wait_for(std::chrono::seconds(0)) == std::future_status::ready);
 
         const auto result = future.get();
-        QVERIFY(std::holds_alternative<QString>(result));
-        QCOMPARE(std::get<QString>(result), QStringLiteral("/tmp/in.png.edited.png"));
+        QVERIFY(std::holds_alternative<ipc::SaveResult>(result));
+        QCOMPARE(std::get<ipc::SaveResult>(result).file, QStringLiteral("/tmp/in.png.edited.png"));
+        QVERIFY(!std::get<ipc::SaveResult>(result).copied);
         QCOMPARE(m_shell->property("annotated").toString(), QStringLiteral("/tmp/in.png"));
     }
 

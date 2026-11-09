@@ -56,6 +56,7 @@ public:
     [[nodiscard]] bool annotate() const;
 
     Q_INVOKABLE void respond(const QString& file);
+    Q_INVOKABLE void respondCopied(const QString& file);
 
 private:
     friend class Server;
@@ -75,6 +76,7 @@ public:
     [[nodiscard]] QString file() const;
 
     Q_INVOKABLE void respond(const QString& file);
+    Q_INVOKABLE void respondCopied(const QString& file);
 
 private:
     friend class Server;

@@ -71,7 +71,11 @@ ScreenshotRequest::ScreenshotRequest(bool region, bool annotate, QLocalSocket* s
 }
 
 void ScreenshotRequest::respond(const QString& file) {
-    reply(file);
+    reply(SaveResult{ .file = file, .copied = false });
+}
+
+void ScreenshotRequest::respondCopied(const QString& file) {
+    reply(SaveResult{ .file = file, .copied = true });
 }
 
 AnnotateRequest::AnnotateRequest(QString file, QLocalSocket* socket)
@@ -83,7 +87,11 @@ AnnotateRequest::AnnotateRequest(QString file, QLocalSocket* socket)
 }
 
 void AnnotateRequest::respond(const QString& file) {
-    reply(file);
+    reply(SaveResult{ .file = file, .copied = false });
+}
+
+void AnnotateRequest::respondCopied(const QString& file) {
+    reply(SaveResult{ .file = file, .copied = true });
 }
 
 PickFileRequest::PickFileRequest(PickFileOptions options, QLocalSocket* socket)

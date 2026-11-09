@@ -58,7 +58,12 @@ struct PickFileOptions {
     PickFileMode::Enum mode = PickFileMode::Select;
 };
 
-using Response = std::variant<Error, QRect, QString>;
+struct SaveResult {
+    QString file;
+    bool copied = false;
+};
+
+using Response = std::variant<Error, QRect, QString, SaveResult>;
 
 } // namespace caelestia::ipc
 

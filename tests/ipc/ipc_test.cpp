@@ -44,13 +44,13 @@ private:
         });
     }
 
-    [[nodiscard]] static Future<QString> shoot(bool region, bool annotate) {
+    [[nodiscard]] static Future<ipc::SaveResult> shoot(bool region, bool annotate) {
         return std::async(std::launch::async, [region, annotate] {
             return ipc::screenshot(region, annotate);
         });
     }
 
-    [[nodiscard]] static Future<QString> annotate(const QString& file) {
+    [[nodiscard]] static Future<ipc::SaveResult> annotate(const QString& file) {
         return std::async(std::launch::async, [file] {
             return ipc::annotate(file);
         });
@@ -230,7 +230,21 @@ private slots:
         m_screenshot->respond(u"/tmp/shot.png"_s);
         QTRY_VERIFY(m_screenshot.isNull());
 
-        QCOMPARE(std::get<QString>(await(future)), u"/tmp/shot.png"_s);
+        const auto result = std::get<ipc::SaveResult>(await(future));
+        QCOMPARE(result.file, u"/tmp/shot.png"_s);
+        QVERIFY(!result.copied);
+    }
+
+    void screenshotRespondCopiedReportsCopied() {
+        auto future = shoot(false, true);
+        QTRY_VERIFY(m_screenshot);
+
+        m_screenshot->respondCopied(u"/tmp/shot.png"_s);
+        QTRY_VERIFY(m_screenshot.isNull());
+
+        const auto result = std::get<ipc::SaveResult>(await(future));
+        QCOMPARE(result.file, u"/tmp/shot.png"_s);
+        QVERIFY(result.copied);
     }
 
     void screenshotRejectReportsCancelled() {
@@ -285,7 +299,7 @@ private slots:
         auto future = shoot(false, false);
         QTRY_VERIFY(m_screenshot);
         m_screenshot->respond(u"/tmp/shot.png"_s);
-        QCOMPARE(std::get<QString>(await(future)), u"/tmp/shot.png"_s);
+        QCOMPARE(std::get<ipc::SaveResult>(await(future)).file, u"/tmp/shot.png"_s);
     }
 
     void releaseRejectsPendingScreenshot() {
@@ -309,7 +323,21 @@ private slots:
         m_annotate->respond(u"/tmp/out.png"_s);
         QTRY_VERIFY(m_annotate.isNull());
 
-        QCOMPARE(std::get<QString>(await(future)), u"/tmp/out.png"_s);
+        const auto result = std::get<ipc::SaveResult>(await(future));
+        QCOMPARE(result.file, u"/tmp/out.png"_s);
+        QVERIFY(!result.copied);
+    }
+
+    void annotateRespondCopiedReportsCopied() {
+        auto future = annotate(u"/tmp/in.png"_s);
+        QTRY_VERIFY(m_annotate);
+
+        m_annotate->respondCopied(u"/tmp/out.png"_s);
+        QTRY_VERIFY(m_annotate.isNull());
+
+        const auto result = std::get<ipc::SaveResult>(await(future));
+        QCOMPARE(result.file, u"/tmp/out.png"_s);
+        QVERIFY(result.copied);
     }
 
     void annotateRejectReportsCancelled() {

@@ -52,6 +52,10 @@ QString toString(const QString& string) {
     return string;
 }
 
+QString toString(const ipc::SaveResult& result) {
+    return result.copied ? u"copied %1"_s.arg(result.file) : result.file;
+}
+
 template <typename T> int report(const ipc::Result<T>& result) {
     if (const auto* value = std::get_if<T>(&result)) {
         out() << toString(*value) << Qt::endl;
@@ -174,6 +178,17 @@ private:
             }
         }
 
+        if (args[0] == "copied"_L1 && args.size() == 2) {
+            if (auto* const screenshot = qobject_cast<ipc::ScreenshotRequest*>(request)) {
+                screenshot->respondCopied(args[1]);
+                return true;
+            }
+            if (auto* const annotate = qobject_cast<ipc::AnnotateRequest*>(request)) {
+                annotate->respondCopied(args[1]);
+                return true;
+            }
+        }
+
         if (args[0] == "file"_L1 && args.size() == 2) {
             if (auto* const screenshot = qobject_cast<ipc::ScreenshotRequest*>(request)) {
                 screenshot->respond(args[1]);
@@ -202,7 +217,7 @@ int serve() {
 
     const FakeShell shell(server);
     out() << "listening (any running shell has been released)\n"
-             "reply with: <id> reject | <id> region <x> <y> <w> <h> | <id> file <path> | quit"
+             "reply with: <id> reject | <id> region <x> <y> <w> <h> | <id> file <path> | <id> copied <path> | quit"
           << Qt::endl;
     return QCoreApplication::exec();
 }

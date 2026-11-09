@@ -99,6 +99,10 @@ QByteArray encode(const Response& response) {
         [&obj](const QString& file) {
             obj[u"file"] = file;
         },
+        [&obj](const SaveResult& result) {
+            obj[u"file"] = result.file;
+            obj[u"copied"] = result.copied;
+        },
     };
     std::visit(overloads, response);
     return toLine(obj);
@@ -151,6 +155,9 @@ Response decodeResponse(const QByteArray& line) {
 
         return QRect(region[0].toInt(), region[1].toInt(), region[2].toInt(), region[3].toInt());
     }
+
+    if (obj.contains(u"copied"))
+        return SaveResult{ .file = obj.value(u"file").toString(), .copied = obj.value(u"copied").toBool() };
 
     if (obj.contains(u"file"))
         return obj.value(u"file").toString();

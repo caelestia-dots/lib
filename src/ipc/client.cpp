@@ -50,7 +50,7 @@ Result<QRect> pickRegion() {
     return expect<QRect>(protocol::decodeResponse(socket.readLine()));
 }
 
-Result<QString> screenshot(bool region, bool annotate) {
+Result<SaveResult> screenshot(bool region, bool annotate) {
     QLocalSocket socket;
     socket.connectToServer(protocol::socketPath());
     if (!socket.waitForConnected(k_connectTimeoutMs))
@@ -62,10 +62,10 @@ Result<QString> screenshot(bool region, bool annotate) {
         return Error::Failed;
     }
 
-    return expect<QString>(protocol::decodeResponse(socket.readLine()));
+    return expect<SaveResult>(protocol::decodeResponse(socket.readLine()));
 }
 
-Result<QString> annotate(const QString& file) {
+Result<SaveResult> annotate(const QString& file) {
     QLocalSocket socket;
     socket.connectToServer(protocol::socketPath());
     if (!socket.waitForConnected(k_connectTimeoutMs))
@@ -77,7 +77,7 @@ Result<QString> annotate(const QString& file) {
         return Error::Failed;
     }
 
-    return expect<QString>(protocol::decodeResponse(socket.readLine()));
+    return expect<SaveResult>(protocol::decodeResponse(socket.readLine()));
 }
 
 Result<QString> pickFile(const PickFileOptions& options) {
