@@ -1,5 +1,6 @@
 #include <qqmlcomponent.h>
 #include <qqmlengine.h>
+#include <qrect.h>
 #include <qtemporarydir.h>
 #include <qtest.h>
 
@@ -21,8 +22,8 @@ import QtQml
 import Caelestia.Ipc
 
 QtObject {
-    property bool region
     property bool annotate
+    property rect region
     property string annotated
     property string pickTitle
     property list<string> pickNameFilters
@@ -40,8 +41,8 @@ QtObject {
                 request.respond(Qt.rect(10, 20, 300, 200));
         }
         onScreenshotRequested: request => {
-            region = request.region;
             annotate = request.annotate;
+            region = request.region;
             request.respond("/tmp/shot.png");
         }
         onAnnotateRequested: request => {
@@ -118,7 +119,7 @@ private slots:
 
     void screenshotThroughQml() {
         auto future = std::async(std::launch::async, [] {
-            return ipc::screenshot(true, false);
+            return ipc::screenshot(false);
         });
         QTRY_VERIFY(future.wait_for(std::chrono::seconds(0)) == std::future_status::ready);
 
@@ -126,8 +127,18 @@ private slots:
         QVERIFY(std::holds_alternative<ipc::SaveResult>(result));
         QCOMPARE(std::get<ipc::SaveResult>(result).file, QStringLiteral("/tmp/shot.png"));
         QVERIFY(!std::get<ipc::SaveResult>(result).copied);
-        QVERIFY(m_shell->property("region").toBool());
         QVERIFY(!m_shell->property("annotate").toBool());
+        QVERIFY(m_shell->property("region").toRect().isNull());
+    }
+
+    void screenshotRegionThroughQml() {
+        auto future = std::async(std::launch::async, [] {
+            return ipc::screenshot(QRect(1, 2, 30, 40), false);
+        });
+        QTRY_VERIFY(future.wait_for(std::chrono::seconds(0)) == std::future_status::ready);
+
+        QVERIFY(std::holds_alternative<ipc::SaveResult>(future.get()));
+        QCOMPARE(m_shell->property("region").toRect(), QRect(1, 2, 30, 40));
     }
 
     void annotateThroughQml() {

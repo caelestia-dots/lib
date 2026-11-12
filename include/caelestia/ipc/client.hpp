@@ -12,7 +12,8 @@ namespace caelestia::ipc {
 template <typename T> using Result = std::variant<T, Error>;
 
 [[nodiscard]] Result<QRect> pickRegion();
-[[nodiscard]] Result<SaveResult> screenshot(bool region, bool annotate);
+[[nodiscard]] Result<SaveResult> screenshot(bool annotate);
+[[nodiscard]] Result<SaveResult> screenshot(const QRect& region, bool annotate);
 [[nodiscard]] Result<SaveResult> annotate(const QString& file);
 [[nodiscard]] Result<QString> pickFile(const PickFileOptions& options);
 

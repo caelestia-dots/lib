@@ -41,6 +41,17 @@ QStringList toStringList(const QJsonValue& value) {
     return list;
 }
 
+QJsonArray toJson(const QRect& rect) {
+    return { rect.x(), rect.y(), rect.width(), rect.height() };
+}
+
+std::optional<QRect> toRect(const QJsonValue& value) {
+    const auto array = value.toArray();
+    if (array.size() != 4)
+        return std::nullopt;
+    return QRect(array[0].toInt(), array[1].toInt(), array[2].toInt(), array[3].toInt());
+}
+
 QByteArray toLine(const QJsonObject& obj) {
     return QJsonDocument(obj).toJson(QJsonDocument::Compact) + '\n';
 }
@@ -66,7 +77,8 @@ QByteArray encode(const Request& request) {
         },
         [&obj](const Screenshot& sc) {
             obj[u"method"] = Screenshot::k_name;
-            obj[u"region"] = sc.region;
+            if (!sc.region.isNull())
+                obj[u"region"] = toJson(sc.region);
             obj[u"annotate"] = sc.annotate;
         },
         [&obj](const Annotate& an) {
@@ -94,7 +106,7 @@ QByteArray encode(const Response& response) {
             obj[u"error"] = toString(error);
         },
         [&obj](const QRect& r) {
-            obj[u"region"] = QJsonArray{ r.x(), r.y(), r.width(), r.height() };
+            obj[u"region"] = toJson(r);
         },
         [&obj](const QString& file) {
             obj[u"file"] = file;
@@ -120,7 +132,7 @@ std::optional<Request> decodeRequest(const QByteArray& line) {
 
     if (method == Screenshot::k_name) {
         return Screenshot{
-            .region = obj.value(u"region").toBool(),
+            .region = toRect(obj.value(u"region")).value_or(QRect()),
             .annotate = obj.value(u"annotate").toBool(),
         };
     }
@@ -149,11 +161,9 @@ Response decodeResponse(const QByteArray& line) {
         return errorFromString(obj.value(u"error").toString());
 
     if (obj.contains(u"region")) {
-        const auto region = obj.value(u"region").toArray();
-        if (region.size() != 4)
-            return Error::Failed;
-
-        return QRect(region[0].toInt(), region[1].toInt(), region[2].toInt(), region[3].toInt());
+        if (const auto region = toRect(obj.value(u"region")))
+            return *region;
+        return Error::Failed;
     }
 
     if (obj.contains(u"copied"))

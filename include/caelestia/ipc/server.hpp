@@ -48,11 +48,11 @@ private:
 class ScreenshotRequest : public Request {
     Q_OBJECT
 
-    Q_PROPERTY(bool region READ region CONSTANT)
+    Q_PROPERTY(QRect region READ region CONSTANT)
     Q_PROPERTY(bool annotate READ annotate CONSTANT)
 
 public:
-    [[nodiscard]] bool region() const;
+    [[nodiscard]] QRect region() const;
     [[nodiscard]] bool annotate() const;
 
     Q_INVOKABLE void respond(const QString& file);
@@ -61,9 +61,9 @@ public:
 private:
     friend class Server;
 
-    ScreenshotRequest(bool region, bool annotate, QLocalSocket* socket);
+    ScreenshotRequest(const QRect& region, bool annotate, QLocalSocket* socket);
 
-    bool m_region;
+    QRect m_region;
     bool m_annotate;
 };
 

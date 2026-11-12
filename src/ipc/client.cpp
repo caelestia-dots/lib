@@ -50,7 +50,11 @@ Result<QRect> pickRegion() {
     return expect<QRect>(protocol::decodeResponse(socket.readLine()));
 }
 
-Result<SaveResult> screenshot(bool region, bool annotate) {
+Result<SaveResult> screenshot(bool annotate) {
+    return screenshot({}, annotate);
+}
+
+Result<SaveResult> screenshot(const QRect& region, bool annotate) {
     QLocalSocket socket;
     socket.connectToServer(protocol::socketPath());
     if (!socket.waitForConnected(k_connectTimeoutMs))

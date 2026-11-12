@@ -68,7 +68,7 @@ template <typename T> int report(const ipc::Result<T>& result) {
 }
 
 QString describe(const ipc::ScreenshotRequest* request) {
-    return u"screenshot region=%1 annotate=%2"_s.arg(request->region()).arg(request->annotate());
+    return u"screenshot region=[%1] annotate=%2"_s.arg(toString(request->region())).arg(request->annotate());
 }
 
 QString describe(const ipc::AnnotateRequest* request) {
@@ -232,15 +232,16 @@ int main(int argc, char* argv[]) {
     parser.addHelpOption();
     parser.addPositionalArgument(u"command"_s, u"serve | pick-region | screenshot | annotate <file> | pick-file"_s);
 
-    const QCommandLineOption region(u"region"_s, u"screenshot: pick a region"_s);
     const QCommandLineOption annotate(u"annotate"_s, u"screenshot: annotate afterwards"_s);
+    const QCommandLineOption region(
+        u"region"_s, u"screenshot: capture this region instead of picking one"_s, u"x,y,w,h"_s);
     const QCommandLineOption title(u"title"_s, u"pick-file: dialog title"_s, u"title"_s);
     const QCommandLineOption nameFilter(u"name-filter"_s, u"pick-file: name filter (repeatable)"_s, u"pattern"_s);
     const QCommandLineOption filter(u"filter"_s, u"pick-file: Images|Videos|Files|Dirs"_s, u"flags"_s, u"NoFilter"_s);
     const QCommandLineOption dir(u"dir"_s, u"pick-file: initial directory"_s, u"path"_s);
     const QCommandLineOption name(u"name"_s, u"pick-file: initial file name"_s, u"name"_s);
     const QCommandLineOption mode(u"mode"_s, u"pick-file: Select|Open|Save"_s, u"mode"_s, u"Select"_s);
-    parser.addOptions({ region, annotate, title, nameFilter, filter, dir, name, mode });
+    parser.addOptions({ annotate, region, title, nameFilter, filter, dir, name, mode });
     parser.process(app);
 
     const auto args = parser.positionalArguments();
@@ -254,8 +255,16 @@ int main(int argc, char* argv[]) {
     if (command == "pick-region"_L1)
         return report(ipc::pickRegion());
 
-    if (command == "screenshot"_L1)
-        return report(ipc::screenshot(parser.isSet(region), parser.isSet(annotate)));
+    if (command == "screenshot"_L1) {
+        if (parser.isSet(region)) {
+            const auto parts = parser.value(region).split(u',');
+            if (parts.size() != 4)
+                parser.showHelp(1);
+            return report(ipc::screenshot(
+                QRect(parts[0].toInt(), parts[1].toInt(), parts[2].toInt(), parts[3].toInt()), parser.isSet(annotate)));
+        }
+        return report(ipc::screenshot(parser.isSet(annotate)));
+    }
 
     if (command == "annotate"_L1) {
         if (args.size() < 2)

@@ -29,7 +29,7 @@ struct PickRegion {
 struct Screenshot {
     static constexpr auto k_name = "screenshot"_L1;
 
-    bool region;
+    QRect region;
     bool annotate;
 };
 

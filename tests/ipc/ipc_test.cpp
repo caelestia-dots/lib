@@ -44,7 +44,13 @@ private:
         });
     }
 
-    [[nodiscard]] static Future<ipc::SaveResult> shoot(bool region, bool annotate) {
+    [[nodiscard]] static Future<ipc::SaveResult> shoot(bool annotate) {
+        return std::async(std::launch::async, [annotate] {
+            return ipc::screenshot(annotate);
+        });
+    }
+
+    [[nodiscard]] static Future<ipc::SaveResult> shoot(const QRect& region, bool annotate) {
         return std::async(std::launch::async, [region, annotate] {
             return ipc::screenshot(region, annotate);
         });
@@ -222,10 +228,10 @@ private slots:
     }
 
     void screenshotRespondReturnsFile() {
-        auto future = shoot(true, false);
+        auto future = shoot(false);
         QTRY_VERIFY(m_screenshot);
-        QVERIFY(m_screenshot->region());
         QVERIFY(!m_screenshot->annotate());
+        QVERIFY(m_screenshot->region().isNull());
 
         m_screenshot->respond(u"/tmp/shot.png"_s);
         QTRY_VERIFY(m_screenshot.isNull());
@@ -235,8 +241,29 @@ private slots:
         QVERIFY(!result.copied);
     }
 
+    void screenshotWithRegionCarriesRegion() {
+        auto future = shoot(QRect(10, 20, 300, 200), true);
+        QTRY_VERIFY(m_screenshot);
+        QVERIFY(m_screenshot->annotate());
+        QCOMPARE(m_screenshot->region(), QRect(10, 20, 300, 200));
+
+        m_screenshot->respond(u"/tmp/shot.png"_s);
+        QCOMPARE(std::get<ipc::SaveResult>(await(future)).file, u"/tmp/shot.png"_s);
+    }
+
+    void screenshotMalformedRegionIsIgnored() {
+        QLocalSocket client;
+        client.connectToServer(socketPath());
+        QVERIFY(client.waitForConnected());
+        client.write("{\"method\":\"screenshot\",\"region\":[1,2,3]}\n");
+        QTRY_VERIFY(m_screenshot);
+        QVERIFY(m_screenshot->region().isNull());
+        m_screenshot->reject();
+        QTRY_VERIFY(m_screenshot.isNull());
+    }
+
     void screenshotRespondCopiedReportsCopied() {
-        auto future = shoot(false, true);
+        auto future = shoot(true);
         QTRY_VERIFY(m_screenshot);
 
         m_screenshot->respondCopied(u"/tmp/shot.png"_s);
@@ -248,9 +275,8 @@ private slots:
     }
 
     void screenshotRejectReportsCancelled() {
-        auto future = shoot(false, true);
+        auto future = shoot(true);
         QTRY_VERIFY(m_screenshot);
-        QVERIFY(!m_screenshot->region());
         QVERIFY(m_screenshot->annotate());
 
         m_screenshot->reject();
@@ -260,10 +286,10 @@ private slots:
     }
 
     void secondScreenshotIsBusy() {
-        auto first = shoot(false, false);
+        auto first = shoot(false);
         QTRY_VERIFY(m_screenshot);
 
-        auto second = shoot(false, false);
+        auto second = shoot(false);
         QCOMPARE(errorOf(await(second)), ipc::Error::Busy);
 
         m_screenshot->reject();
@@ -274,7 +300,7 @@ private slots:
         auto picking = pick();
         QTRY_VERIFY(m_request);
 
-        auto shooting = shoot(false, false);
+        auto shooting = shoot(false);
         QCOMPARE(errorOf(await(shooting)), ipc::Error::Busy);
         QVERIFY(!m_screenshot);
 
@@ -286,9 +312,8 @@ private slots:
         QLocalSocket client;
         client.connectToServer(socketPath());
         QVERIFY(client.waitForConnected());
-        client.write("{\"method\":\"screenshot\",\"region\":true,\"annotate\":true}\n");
+        client.write("{\"method\":\"screenshot\",\"annotate\":true}\n");
         QTRY_VERIFY(m_screenshot);
-        QVERIFY(m_screenshot->region());
         QVERIFY(m_screenshot->annotate());
 
         const QSignalSpy cancelled(m_screenshot.data(), &ipc::Request::cancelled);
@@ -296,14 +321,14 @@ private slots:
         QTRY_COMPARE(cancelled.size(), 1);
         QTRY_VERIFY(m_screenshot.isNull());
 
-        auto future = shoot(false, false);
+        auto future = shoot(false);
         QTRY_VERIFY(m_screenshot);
         m_screenshot->respond(u"/tmp/shot.png"_s);
         QCOMPARE(std::get<ipc::SaveResult>(await(future)).file, u"/tmp/shot.png"_s);
     }
 
     void releaseRejectsPendingScreenshot() {
-        auto future = shoot(false, false);
+        auto future = shoot(false);
         QTRY_VERIFY(m_screenshot);
 
         QLocalSocket client;

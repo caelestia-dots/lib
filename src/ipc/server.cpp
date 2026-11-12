@@ -57,12 +57,12 @@ void PickRegionRequest::respond(const QRect& region) {
     reply(region);
 }
 
-ScreenshotRequest::ScreenshotRequest(bool region, bool annotate, QLocalSocket* socket)
+ScreenshotRequest::ScreenshotRequest(const QRect& region, bool annotate, QLocalSocket* socket)
     : Request(socket)
     , m_region(region)
     , m_annotate(annotate) {}
 
-[[nodiscard]] bool ScreenshotRequest::region() const {
+[[nodiscard]] QRect ScreenshotRequest::region() const {
     return m_region;
 }
 
