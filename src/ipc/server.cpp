@@ -225,14 +225,10 @@ void Server::dispatch(QLocalSocket* socket) {
             emit screenshotRequested(m_pendingScreenshot);
         },
         [this, socket](const protocol::Annotate& an) {
-            if (m_pendingAnnotate) {
-                qCDebug(lcIpc) << "Rejecting annotate: busy";
-                answer(socket, Error::Busy);
-                return;
-            }
-
-            m_pendingAnnotate = new AnnotateRequest(an.file, socket);
-            emit annotateRequested(m_pendingAnnotate);
+            auto* const request = new AnnotateRequest(an.file, socket);
+            m_pendingAnnotates.removeAll(nullptr);
+            m_pendingAnnotates.append(request);
+            emit annotateRequested(request);
         },
         [this, socket](const protocol::PickFile& pf) {
             auto* const request = new PickFileRequest(pf, socket);
@@ -251,8 +247,10 @@ void Server::release(QLocalSocket* socket) {
         m_pendingPick->reject();
     if (m_pendingScreenshot)
         m_pendingScreenshot->reject();
-    if (m_pendingAnnotate)
-        m_pendingAnnotate->reject();
+    for (const auto& request : std::as_const(m_pendingAnnotates)) {
+        if (request)
+            request->reject();
+    }
     for (const auto& request : std::as_const(m_pendingPickFiles)) {
         if (request)
             request->reject();

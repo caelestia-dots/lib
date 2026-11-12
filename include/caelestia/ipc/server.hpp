@@ -137,7 +137,7 @@ private:
     QLocalServer m_server;
     QPointer<PickRegionRequest> m_pendingPick;
     QPointer<ScreenshotRequest> m_pendingScreenshot;
-    QPointer<AnnotateRequest> m_pendingAnnotate;
+    QList<QPointer<AnnotateRequest>> m_pendingAnnotates;
     QList<QPointer<PickFileRequest>> m_pendingPickFiles;
 
     static void releaseExisting();

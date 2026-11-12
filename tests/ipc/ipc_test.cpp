@@ -375,15 +375,21 @@ private slots:
         QCOMPARE(errorOf(await(future)), ipc::Error::Cancelled);
     }
 
-    void secondAnnotateIsBusy() {
-        auto first = annotate(u"/tmp/in.png"_s);
+    void concurrentAnnotatesAreIndependent() {
+        auto first = annotate(u"/tmp/first.png"_s);
         QTRY_VERIFY(m_annotate);
+        const QPointer firstRequest = m_annotate;
 
-        auto second = annotate(u"/tmp/in.png"_s);
-        QCOMPARE(errorOf(await(second)), ipc::Error::Busy);
+        auto second = annotate(u"/tmp/second.png"_s);
+        QTRY_VERIFY(m_annotate && m_annotate != firstRequest);
+        QCOMPARE(m_annotate->file(), u"/tmp/second.png"_s);
 
-        m_annotate->reject();
-        QCOMPARE(errorOf(await(first)), ipc::Error::Cancelled);
+        m_annotate->respond(u"/tmp/second-out.png"_s);
+        QCOMPARE(std::get<ipc::SaveResult>(await(second)).file, u"/tmp/second-out.png"_s);
+        QVERIFY(firstRequest);
+
+        firstRequest->respond(u"/tmp/first-out.png"_s);
+        QCOMPARE(std::get<ipc::SaveResult>(await(first)).file, u"/tmp/first-out.png"_s);
     }
 
     void annotateClientDisconnectCancels() {
@@ -400,16 +406,21 @@ private slots:
         QTRY_VERIFY(m_annotate.isNull());
     }
 
-    void releaseRejectsPendingAnnotate() {
-        auto future = annotate(u"/tmp/in.png"_s);
+    void releaseRejectsAllPendingAnnotates() {
+        auto first = annotate(u"/tmp/in.png"_s);
         QTRY_VERIFY(m_annotate);
+        const QPointer firstRequest = m_annotate;
+
+        auto second = annotate(u"/tmp/in.png"_s);
+        QTRY_VERIFY(m_annotate && m_annotate != firstRequest);
 
         QLocalSocket client;
         client.connectToServer(socketPath());
         QVERIFY(client.waitForConnected());
         client.write("{\"method\":\"release\"}\n");
 
-        QCOMPARE(errorOf(await(future)), ipc::Error::Cancelled);
+        QCOMPARE(errorOf(await(first)), ipc::Error::Cancelled);
+        QCOMPARE(errorOf(await(second)), ipc::Error::Cancelled);
         QTRY_VERIFY(!m_server->isListening());
     }
 
