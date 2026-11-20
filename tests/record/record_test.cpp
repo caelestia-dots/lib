@@ -141,11 +141,8 @@ private slots:
     }
 
     void staleStateIsReplaced() {
-        QProcess proc;
-        proc.start(u"/bin/true"_s, {});
-        QVERIFY(proc.waitForFinished());
         writeFile(record::statePath(), QJsonDocument(QJsonObject{
-                                                         { u"pid"_s, proc.processId() },
+                                                         { u"pid"_s, -1 },
                                                          { u"startTicks"_s, 1 },
                                                          { u"output"_s, u"/stale.mp4"_s },
                                                          { u"startedAt"_s, 1 },
