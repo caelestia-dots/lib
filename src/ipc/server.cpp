@@ -225,16 +225,16 @@ void Server::dispatch(QLocalSocket* socket) {
             emit screenshotRequested(m_pendingScreenshot);
         },
         [this, socket](const protocol::Annotate& an) {
-            auto* const request = new AnnotateRequest(an.file, socket);
+            auto* const req = new AnnotateRequest(an.file, socket);
             m_pendingAnnotates.removeAll(nullptr);
-            m_pendingAnnotates.append(request);
-            emit annotateRequested(request);
+            m_pendingAnnotates.append(req);
+            emit annotateRequested(req);
         },
         [this, socket](const protocol::PickFile& pf) {
-            auto* const request = new PickFileRequest(pf, socket);
+            auto* const req = new PickFileRequest(pf, socket);
             m_pendingPickFiles.removeAll(nullptr);
-            m_pendingPickFiles.append(request);
-            emit pickFileRequested(request);
+            m_pendingPickFiles.append(req);
+            emit pickFileRequested(req);
         },
     };
     std::visit(handlers, *request);
