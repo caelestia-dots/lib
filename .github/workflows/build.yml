@@ -92,7 +92,7 @@ jobs:
     permissions: {}
     steps:
       - name: Verify build results
-        uses: ./.github/actions/verify-checks
+        uses: $/.github/actions/verify-checks
         with:
           needs: ${{ toJSON(needs) }}
           checks: |
