@@ -372,7 +372,7 @@ private slots:
         QCOMPARE(json[u"name"_s].toString(), u"catppuccin"_s);
         QCOMPARE(json[u"flavour"_s].toString(), u"mocha"_s);
         QCOMPARE(json[u"mode"_s].toString(), u"dark"_s);
-        QCOMPARE(json[u"colours"_s][u"primary"_s].toString(), u"c2c1ff"_s);
+        QCOMPARE(json[u"colours"_s][u"primary"_s].toString(), u"cba6f7"_s);
 
         const auto loaded = loadState();
         if (!loaded)
