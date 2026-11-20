@@ -1,0 +1,50 @@
+name: Check formatting
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  changes:
+    uses: ./.github/workflows/detect-changes.yml
+    permissions:
+      pull-requests: read
+    with:
+      filter-group: format
+
+  check-cpp:
+    needs: changes
+    if: needs.changes.outputs.format == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/lib-arch-env:latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v7
+
+      - name: Check C++ format
+        shell: bash
+        run: |
+          clang-format --version
+          find include src tests -name '*.cpp' -o -name '*.hpp' \
+            | xargs clang-format --dry-run --Werror
+
+  format-check:
+    if: always()
+    needs:
+      - changes
+      - check-cpp
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Verify formatting results
+        uses: ./.github/actions/verify-checks
+        with:
+          needs: ${{ toJSON(needs) }}
+          checks: |
+            {
+              "check-cpp": "format"
+            }

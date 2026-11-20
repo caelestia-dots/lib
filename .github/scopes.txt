@@ -1,0 +1,15 @@
+cache
+config
+ipc
+media
+record
+scheme
+screenshot
+theme
+utils
+wallpaper
+
+ci
+cmake
+nix
+tests

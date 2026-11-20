@@ -1,0 +1,55 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  changes:
+    uses: ./.github/workflows/detect-changes.yml
+    permissions:
+      pull-requests: read
+    with:
+      filter-group: build
+
+  test-cpp:
+    needs: changes
+    if: needs.changes.outputs.test == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/lib-arch-env:latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+
+      - name: CMake build
+        run: |
+          cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DBUILD_TESTING=ON \
+            -DVERSION=0.0.1 -DGIT_REVISION='${{ github.sha }}'
+          cmake --build build
+
+      - name: Run tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          ctest --test-dir build --output-on-failure -j "$(nproc)"
+
+  test-check:
+    if: always()
+    needs:
+      - changes
+      - test-cpp
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Verify test results
+        uses: ./.github/actions/verify-checks
+        with:
+          needs: ${{ toJSON(needs) }}
+          checks: |
+            {
+              "test-cpp": "test"
+            }

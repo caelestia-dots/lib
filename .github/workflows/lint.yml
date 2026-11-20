@@ -1,0 +1,59 @@
+name: Lint code
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  changes:
+    uses: ./.github/workflows/detect-changes.yml
+    permissions:
+      pull-requests: read
+    with:
+      filter-group: build
+
+  lint-cpp:
+    needs: changes
+    if: needs.changes.outputs.lint == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/lib-arch-env:latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+
+      - name: CMake build
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DBUILD_TESTING=ON \
+            -DVERSION=0.0.1 \
+            -DGIT_REVISION='${{ github.sha }}'
+
+      - name: Lint C++
+        run: |
+          clang-tidy --version
+          run-clang-tidy -p build -quiet -j "$(nproc)" -warnings-as-errors='*' \
+            -source-filter='^(?!.*/build/).*\.cpp$'
+
+  lint-check:
+    if: always()
+    needs:
+      - changes
+      - lint-cpp
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Verify lint results
+        uses: ./.github/actions/verify-checks
+        with:
+          needs: ${{ toJSON(needs) }}
+          checks: |
+            {
+              "lint-cpp": "lint"
+            }
