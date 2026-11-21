@@ -34,6 +34,7 @@ jobs:
             -DBUILD_TESTING=ON \
             -DVERSION=0.0.1 \
             -DGIT_REVISION='${{ github.sha }}'
+          cmake --build build
 
       - name: Lint C++
         run: |
