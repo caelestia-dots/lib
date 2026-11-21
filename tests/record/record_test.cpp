@@ -2,14 +2,11 @@
 #include <qfile.h>
 #include <qjsondocument.h>
 #include <qjsonobject.h>
-#include <qprocess.h>
 #include <qtemporarydir.h>
 #include <qtest.h>
 #include <qthread.h>
 
 #include <sys/stat.h>
-
-#include <csignal>
 
 #include "caelestia/record/record.hpp"
 #include "common.hpp"
@@ -50,7 +47,19 @@ private:
         return opts;
     }
 
-    [[nodiscard]] static bool processExists(qint64 pid) { return ::kill(static_cast<pid_t>(pid), 0) == 0; }
+    [[nodiscard]] static bool processExists(qint64 pid) {
+        QFile stat(u"/proc/%1/stat"_s.arg(pid));
+        if (!stat.open(QIODevice::ReadOnly))
+            return false;
+
+        const auto content = stat.readAll();
+        const auto lastParen = content.lastIndexOf(')');
+        if (lastParen == -1)
+            return false;
+
+        const auto fields = content.mid(lastParen + 2).split(' ');
+        return fields.size() >= 20 && fields[0] != "Z";
+    }
 
     [[nodiscard]] bool waitForLog(const QString& text) const {
         for (int i = 0; i < 100; ++i) {
