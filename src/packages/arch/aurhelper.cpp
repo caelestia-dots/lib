@@ -12,7 +12,8 @@ namespace {
 
 Q_LOGGING_CATEGORY(lcAurHelper, "caelestia.packages.aur", QtInfoMsg)
 
-constexpr QStringView k_pkexec = u"pkexec";
+constexpr QStringView k_pkexec = u"/usr/bin/pkexec";
+constexpr QStringView k_pacman = u"/usr/bin/pacman";
 constexpr int k_queryTimeoutMs = 120000;
 
 QString programName(AurHelper helper) {
@@ -63,6 +64,12 @@ std::optional<AurHelper> findAurHelper() {
     return std::nullopt;
 }
 
+bool isPackageName(const QString& name) {
+    static const QRegularExpression k_name(
+        uR"(^(?:[A-Za-z0-9@_+][A-Za-z0-9@._+-]*/)?[A-Za-z0-9@_+][A-Za-z0-9@._+-]*$)"_s);
+    return k_name.match(name).hasMatch();
+}
+
 QProcessEnvironment transactionEnvironment() {
     auto env = QProcessEnvironment::systemEnvironment();
     env.insert(u"LC_ALL"_s, u"C"_s);
@@ -75,7 +82,7 @@ Command command(std::optional<AurHelper> helper, const QStringList& operation) {
         return { .program = programName(*helper), .arguments = headlessFlags(*helper) + operation };
     return {
         .program = k_pkexec.toString(),
-        .arguments = QStringList{ u"pacman"_s, u"--noconfirm"_s, u"--color"_s, u"never"_s } + operation,
+        .arguments = QStringList{ k_pacman.toString(), u"--noconfirm"_s, u"--color"_s, u"never"_s } + operation,
     };
 }
 

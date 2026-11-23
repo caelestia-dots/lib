@@ -1,11 +1,14 @@
 #include <qdir.h>
 #include <qfileinfo.h>
 #include <qprocess.h>
+#include <qsignalspy.h>
 #include <qstandardpaths.h>
 #include <qtemporarydir.h>
 #include <qtest.h>
 
 #include <sys/stat.h>
+
+#include <functional>
 
 #include "archbackend.hpp"
 #include "common.hpp"
@@ -16,9 +19,12 @@ using Qt::StringLiterals::operator""_s;
 namespace {
 
 constexpr auto k_fakeParu = R"(#!/bin/sh
-[ "$1" = "-Qua" ] || exit 1
-echo ":: Checking AUR"
-echo "baz 1.0-1 -> 1.1-1"
+if [ "$1" = "-Qua" ]; then
+    echo ":: Checking AUR"
+    echo "baz 1.0-1 -> 1.1-1"
+else
+    echo "$*"
+fi
 )";
 
 QByteArray desc(const QString& name, const QString& version) {
@@ -145,6 +151,38 @@ Server = file://%1/repo
         QCOMPARE(packages[0], (Package{ .name = u"bar"_s, .version = u"1.0-1"_s, .source = u"test"_s }));
         QCOMPARE(packages[1], (Package{ .name = u"baz"_s, .version = u"1.0-1"_s, .source = QString() }));
         QCOMPARE(packages[2], (Package{ .name = u"foo"_s, .version = u"1.0-1"_s, .source = u"test"_s }));
+    }
+
+    void rejectsInvalidNames() {
+        const auto* const backend = ArchBackend::create(this, confPath());
+        QVERIFY(backend);
+        const std::function<Transaction*()> starters[] = {
+            [&] {
+                return backend->install({}, this);
+            },
+            [&] {
+                return backend->install({ u"--config=/tmp/x"_s }, this);
+            },
+            [&] {
+                return backend->remove({ u"foo"_s, u"-u"_s }, this);
+            },
+        };
+        for (const auto& start : starters) {
+            const auto* const transaction = start();
+            QSignalSpy finished(transaction, &Transaction::finished);
+            QVERIFY(finished.wait());
+            QVERIFY(!transaction->succeeded());
+        }
+    }
+
+    void installRunsHelper() {
+        const auto* const backend = ArchBackend::create(this, confPath());
+        QVERIFY(backend);
+        const auto* const transaction = backend->install({ u"foo"_s }, this);
+        QSignalSpy finished(transaction, &Transaction::finished);
+        QVERIFY(finished.wait());
+        QVERIFY(transaction->succeeded());
+        QVERIFY(transaction->output().join(u' ').endsWith(u"--skipreview -S -- foo"_s));
     }
 };
 

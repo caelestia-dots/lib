@@ -54,7 +54,7 @@ private slots:
     void paruCommandsAreHeadless() {
         const QStringList flags{
             u"--sudo"_s,
-            u"pkexec"_s,
+            u"/usr/bin/pkexec"_s,
             u"--noconfirm"_s,
             u"--color"_s,
             u"never"_s,
@@ -75,14 +75,43 @@ private slots:
     }
 
     void pacmanFallbackUsesPkexec() {
-        QCOMPARE(command(std::nullopt, { u"-R"_s, u"foo"_s }),
-            (Command{ .program = u"pkexec"_s,
-                .arguments = { u"pacman"_s, u"--noconfirm"_s, u"--color"_s, u"never"_s, u"-R"_s, u"foo"_s } }));
+        QCOMPARE(
+            command(std::nullopt, { u"-R"_s, u"foo"_s }), (Command{ .program = u"/usr/bin/pkexec"_s,
+                                                              .arguments = { u"/usr/bin/pacman"_s, u"--noconfirm"_s,
+                                                                  u"--color"_s, u"never"_s, u"-R"_s, u"foo"_s } }));
+    }
+
+    void validatesPackageNames() {
+        const QStringList valid{
+            u"firefox"_s,
+            u"lib32-glibc"_s,
+            u"gtk+3"_s,
+            u"python-pyqt6"_s,
+            u"extra/foo"_s,
+            u"_underscore"_s,
+            u"a.b@c"_s,
+        };
+        for (const auto& name : valid)
+            QVERIFY2(isPackageName(name), qPrintable(name));
+
+        const QStringList invalid{
+            u""_s,
+            u"-u"_s,
+            u"--config=/tmp/x"_s,
+            u"a b"_s,
+            u".hidden"_s,
+            u"a/b/c"_s,
+            u"foo;rm"_s,
+            u"-"_s,
+            u"/foo"_s,
+        };
+        for (const auto& name : invalid)
+            QVERIFY2(!isPackageName(name), qPrintable(name));
     }
 
     void environmentForcesPkexecAndLocale() {
         const auto env = transactionEnvironment();
-        QCOMPARE(env.value(u"PACMAN_AUTH"_s), u"pkexec"_s);
+        QCOMPARE(env.value(u"PACMAN_AUTH"_s), u"/usr/bin/pkexec"_s);
         QCOMPARE(env.value(u"LC_ALL"_s), u"C"_s);
     }
 

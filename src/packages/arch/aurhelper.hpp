@@ -38,6 +38,7 @@ private:
 };
 
 [[nodiscard]] std::optional<AurHelper> findAurHelper();
+[[nodiscard]] bool isPackageName(const QString& name);
 [[nodiscard]] QProcessEnvironment transactionEnvironment();
 [[nodiscard]] Command command(std::optional<AurHelper> helper, const QStringList& operation);
 [[nodiscard]] QList<Update> parseAurUpdates(const QString& output);

@@ -25,6 +25,17 @@ Transaction* run(const Command& command, QObject* parent) {
     return new ProcessTransaction(command.program, command.arguments, transactionEnvironment(), parent);
 }
 
+Transaction* runOnPackages(
+    std::optional<AurHelper> helper, const QString& operation, const QStringList& names, QObject* parent) {
+    if (names.isEmpty())
+        return Transaction::failed(u"No packages given"_s, parent);
+    for (const auto& name : names) {
+        if (!isPackageName(name))
+            return Transaction::failed(u"Invalid package name: "_s + name, parent);
+    }
+    return run(command(helper, QStringList{ operation, u"--"_s } + names), parent);
+}
+
 } // namespace
 
 ArchBackend::ArchBackend(QString configPath, std::optional<AurHelper> helper, QObject* parent)
@@ -83,15 +94,11 @@ Transaction* ArchBackend::upgrade(QObject* parent) const {
 }
 
 Transaction* ArchBackend::install(const QStringList& names, QObject* parent) const {
-    if (names.isEmpty())
-        return Transaction::failed(u"No packages given"_s, parent);
-    return run(command(m_helper, QStringList{ u"-S"_s } + names), parent);
+    return runOnPackages(m_helper, u"-S"_s, names, parent);
 }
 
 Transaction* ArchBackend::remove(const QStringList& names, QObject* parent) const {
-    if (names.isEmpty())
-        return Transaction::failed(u"No packages given"_s, parent);
-    return run(command(m_helper, QStringList{ u"-R"_s } + names), parent);
+    return runOnPackages(m_helper, u"-Rns"_s, names, parent);
 }
 
 } // namespace caelestia::packages
