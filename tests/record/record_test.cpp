@@ -8,6 +8,8 @@
 
 #include <sys/stat.h>
 
+#include <memory>
+
 #include "caelestia/record/record.hpp"
 #include "common.hpp"
 
@@ -20,7 +22,7 @@ constexpr auto k_fakeRecorder = R"(#!/bin/sh
 PATH=/usr/bin:/bin
 echo "$*" >> "$FAKE_LOG"
 [ -n "$FAKE_EXIT" ] && exit "$FAKE_EXIT"
-trap 'exit 0' INT TERM
+trap 'sleep "${FAKE_STOP_DELAY:-0}"; exit 0' INT TERM
 trap 'echo pause >> "$FAKE_LOG"' USR2
 while :; do sleep 0.05; done
 )";
@@ -87,6 +89,7 @@ private slots:
     void init() {
         QFile::remove(logPath());
         qunsetenv("FAKE_EXIT");
+        qunsetenv("FAKE_STOP_DELAY");
     }
 
     void cleanup() {
@@ -146,7 +149,8 @@ private slots:
         qputenv("FAKE_EXIT", "1");
         QVERIFY(record::start(options()));
         QVERIFY(waitForLog(u"-o"_s));
-        QTRY_VERIFY(!record::state().running);
+        QTRY_VERIFY(record::state().died);
+        QVERIFY(!record::state().running);
         QVERIFY(!record::stop());
     }
 
@@ -197,6 +201,23 @@ private slots:
         QVERIFY(!QFile::exists(record::statePath()));
         QCOMPARE(record::state(), record::State{});
         QTRY_VERIFY(!processExists(pid));
+    }
+
+    void stopClearsStateBeforeRecorderExits() {
+        qputenv("FAKE_STOP_DELAY", "0.5");
+        QVERIFY(record::start(options()));
+        QVERIFY(waitForLog(u"-o"_s));
+        const auto pid = record::state().pid;
+
+        const std::unique_ptr<QThread> stopper(QThread::create([] {
+            [[maybe_unused]] const auto output = record::stop();
+        }));
+        stopper->start();
+
+        QTRY_VERIFY(!QFile::exists(record::statePath()));
+        QVERIFY(processExists(pid));
+        QCOMPARE(record::state(), record::State{});
+        QVERIFY(stopper->wait());
     }
 
     void stopFailsWhenIdle() { QVERIFY(!record::stop()); }

@@ -187,15 +187,22 @@ QString statePath() {
 }
 
 State state() {
-    const auto persisted = loadLive();
+    const auto persisted = load();
     if (!persisted)
         return {};
+
+    if (!alive(*persisted)) {
+        State dead;
+        dead.died = true;
+        return dead;
+    }
 
     const auto current = now();
     const auto pausedNow = persisted->pausedSince ? current - persisted->pausedSince : 0;
     return {
         .running = true,
         .paused = persisted->pausedSince != 0,
+        .died = false,
         .pid = persisted->pid,
         .output = persisted->outputPath,
         .region = persisted->region,
@@ -241,19 +248,24 @@ std::optional<QString> stop() {
         return std::nullopt;
     }
 
-    if (!signal(persisted->pid, SIGINT))
+    QFile::remove(statePath());
+    const auto abort = [&persisted]() -> std::optional<QString> {
+        save(*persisted);
         return std::nullopt;
+    };
+
+    if (!signal(persisted->pid, SIGINT))
+        return abort();
 
     const QDeadlineTimer deadline(k_stopTimeoutMs);
     while (alive(*persisted)) {
         if (deadline.hasExpired()) {
             qCWarning(lcRecord) << "Recorder" << persisted->pid << "did not exit";
-            return std::nullopt;
+            return abort();
         }
         QThread::msleep(k_stopPollMs);
     }
 
-    QFile::remove(statePath());
     return persisted->outputPath;
 }
 

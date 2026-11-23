@@ -20,6 +20,7 @@ struct Options {
 struct State {
     bool running = false;
     bool paused = false;
+    bool died = false;
     qint64 pid = 0;
     QString output;
     QString region;
