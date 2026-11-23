@@ -2,6 +2,7 @@ cache
 config
 ipc
 media
+packages
 record
 scheme
 screenshot

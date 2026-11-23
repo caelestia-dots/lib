@@ -39,6 +39,7 @@ add_subdirectory(src/config)
 add_subdirectory(src/ipc)
 add_subdirectory(src/utils)
 add_subdirectory(src/media)
+add_subdirectory(src/packages)
 add_subdirectory(src/record)
 add_subdirectory(src/scheme)
 add_subdirectory(src/screenshot)
@@ -62,6 +63,7 @@ target_link_libraries(caelestia
         caelestia-config
         caelestia-ipc
         caelestia-media
+        caelestia-packages
         caelestia-record
         caelestia-scheme
         caelestia-screenshot
