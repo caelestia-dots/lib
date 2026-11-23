@@ -1,0 +1,5 @@
+foreach(name IN ITEMS aurhelper pacmanconf arch)
+    create_test(packages ${name} utils)
+    target_include_directories(test-packages-${name} PRIVATE "${PROJECT_SOURCE_DIR}/src/packages/arch")
+    target_link_libraries(test-packages-${name} PRIVATE PkgConfig::libalpm)
+endforeach()
