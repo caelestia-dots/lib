@@ -3,7 +3,6 @@
 #include <qfuture.h>
 #include <qlist.h>
 #include <qobject.h>
-#include <qprocess.h>
 #include <qstring.h>
 #include <qstringlist.h>
 #include <qtypes.h>
@@ -40,27 +39,25 @@ class Transaction : public QObject {
     Q_OBJECT
 
 public:
-    [[nodiscard]] static Transaction* run(const QString& program, const QStringList& arguments,
-        const QProcessEnvironment& environment, QObject* parent = nullptr);
+    explicit Transaction(QObject* parent = nullptr);
+
     [[nodiscard]] static Transaction* failed(const QString& reason, QObject* parent = nullptr);
 
     [[nodiscard]] bool running() const;
     [[nodiscard]] bool succeeded() const;
     [[nodiscard]] const QStringList& output() const;
 
+    virtual void cancel() {}
+
 signals:
     void outputLine(const QString& line);
     void finished(bool ok);
 
-private:
-    explicit Transaction(QObject* parent);
-
+protected:
     void append(const QString& line);
     void finish(bool ok);
-    void readOutput();
 
-    QProcess* m_process = nullptr;
-    QByteArray m_pending;
+private:
     QStringList m_output;
     bool m_running = true;
     bool m_succeeded = false;

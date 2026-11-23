@@ -7,6 +7,7 @@ cmake_dependent_option(WITH_ALPM "Build the libalpm (Arch Linux) packages backen
 add_library(caelestia-packages OBJECT
     ${PROJECT_SOURCE_DIR}/include/caelestia/packages/packages.hpp
     packages.cpp
+    processtransaction.cpp
     transaction.cpp
 )
 target_link_libraries(caelestia-packages

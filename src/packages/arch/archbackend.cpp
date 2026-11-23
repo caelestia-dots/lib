@@ -4,6 +4,7 @@
 #include <qfuture.h>
 #include <qstandardpaths.h>
 
+#include "../processtransaction.hpp"
 #include "alpmhandle.hpp"
 #include "pacmanconf.hpp"
 
@@ -21,7 +22,7 @@ std::unique_ptr<AlpmHandle> openHandle(const QString& configPath) {
 }
 
 Transaction* run(const Command& command, QObject* parent) {
-    return Transaction::run(command.program, command.arguments, transactionEnvironment(), parent);
+    return new ProcessTransaction(command.program, command.arguments, transactionEnvironment(), parent);
 }
 
 } // namespace

@@ -5,8 +5,8 @@
 
 #include <sys/stat.h>
 
-#include "caelestia/packages/packages.hpp"
 #include "common.hpp"
+#include "processtransaction.hpp"
 
 using namespace caelestia::packages;
 using Qt::StringLiterals::operator""_s;
@@ -45,7 +45,7 @@ private slots:
     }
 
     void streamsMergedOutputAndSucceeds() {
-        const auto* transaction = Transaction::run(m_program, {}, env(u"0"_s), this);
+        const auto* transaction = new ProcessTransaction(m_program, {}, env(u"0"_s), this);
         const QSignalSpy lines(transaction, &Transaction::outputLine);
         QSignalSpy finished(transaction, &Transaction::finished);
 
@@ -59,7 +59,7 @@ private slots:
     }
 
     void reportsNonZeroExit() {
-        const auto* transaction = Transaction::run(m_program, {}, env(u"3"_s), this);
+        const auto* transaction = new ProcessTransaction(m_program, {}, env(u"3"_s), this);
         QSignalSpy finished(transaction, &Transaction::finished);
         QVERIFY(finished.wait());
         QVERIFY(!transaction->succeeded());
@@ -67,11 +67,19 @@ private slots:
     }
 
     void reportsMissingProgram() {
-        const auto* transaction = Transaction::run(m_root.filePath(u"missing"_s), {}, env(u"0"_s), this);
+        const auto* transaction = new ProcessTransaction(m_root.filePath(u"missing"_s), {}, env(u"0"_s), this);
         QSignalSpy finished(transaction, &Transaction::finished);
         QVERIFY(finished.wait());
         QVERIFY(!transaction->succeeded());
         QVERIFY(!transaction->output().isEmpty());
+    }
+
+    void cancelTerminatesProcess() {
+        auto* transaction = new ProcessTransaction(u"sleep"_s, { u"30"_s }, env(u"0"_s), this);
+        QSignalSpy finished(transaction, &Transaction::finished);
+        transaction->cancel();
+        QVERIFY(finished.wait());
+        QVERIFY(!transaction->succeeded());
     }
 
     void failedFinishesAsynchronously() {
