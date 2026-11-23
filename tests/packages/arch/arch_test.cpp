@@ -1,3 +1,4 @@
+#include <qdatetime.h>
 #include <qdir.h>
 #include <qfileinfo.h>
 #include <qprocess.h>
@@ -48,17 +49,18 @@ private:
         writeFile(systemDb() + u"/local/%1-%2/desc"_s.arg(name, version), desc(name, version));
     }
 
-    void writeSyncDb(const QList<std::pair<QString, QString>>& packages) const {
+    void writeSyncDb(const QString& dbFile, const QList<std::pair<QString, QString>>& packages) const {
         const auto stage = m_root.filePath(u"stage"_s);
+        QVERIFY(QDir(stage).removeRecursively());
         QStringList entries;
         for (const auto& [name, version] : packages) {
             entries << u"%1-%2"_s.arg(name, version);
             writeFile(stage + u"/%1/desc"_s.arg(entries.last()), desc(name, version));
         }
 
-        QVERIFY(QDir().mkpath(m_root.filePath(u"repo"_s)));
+        QVERIFY(QDir().mkpath(QFileInfo(dbFile).absolutePath()));
         QProcess tar;
-        tar.start(u"tar"_s, QStringList{ u"-cf"_s, m_root.filePath(u"repo/test.db"_s), u"-C"_s, stage } + entries);
+        tar.start(u"tar"_s, QStringList{ u"-cf"_s, dbFile, u"-C"_s, stage } + entries);
         QVERIFY(tar.waitForFinished());
         QCOMPARE(tar.exitCode(), 0);
     }
@@ -83,7 +85,11 @@ private slots:
         writeLocal(u"foo"_s, u"1.0-1"_s);
         writeLocal(u"bar"_s, u"1.0-1"_s);
         writeLocal(u"baz"_s, u"1.0-1"_s);
-        writeSyncDb({ { u"foo"_s, u"2.0-1"_s }, { u"bar"_s, u"2.0-1"_s } });
+        writeSyncDb(m_root.filePath(u"repo/test.db"_s), { { u"foo"_s, u"2.0-1"_s }, { u"bar"_s, u"2.0-1"_s } });
+        writeSyncDb(systemDb() + u"/sync/test.db"_s, { { u"foo"_s, u"1.5-1"_s } });
+        QFile systemSync(systemDb() + u"/sync/test.db"_s);
+        QVERIFY(systemSync.open(QIODevice::ReadWrite));
+        QVERIFY(systemSync.setFileTime(QDateTime::currentDateTime().addSecs(-3600), QFileDevice::FileModificationTime));
 
         writeFile(confPath(), QStringLiteral(R"([options]
 RootDir = %1
@@ -115,6 +121,22 @@ Server = file://%1/repo
         QVERIFY(caps.testFlag(Capability::Remove));
         QVERIFY(caps.testFlag(Capability::Upgrade));
         QVERIFY(caps.testFlag(Capability::ManageForeign));
+    }
+
+    void coldCacheSeedsFromSystemSyncDb() {
+        const auto* const backend = ArchBackend::create(this, confPath());
+        QVERIFY(backend);
+        auto future = backend->updates(false);
+        future.waitForFinished();
+
+        const auto updates = future.result();
+        QCOMPARE(updates.size(), 1);
+        QCOMPARE(updates[0].package.name, u"foo"_s);
+        QCOMPARE(updates[0].newVersion, u"1.5-1"_s);
+
+        const QFileInfo seeded(m_root.filePath(u"cache/caelestia/packages/alpm/sync/test.db"_s));
+        QVERIFY(seeded.exists());
+        QCOMPARE(seeded.lastModified(), QFileInfo(systemDb() + u"/sync/test.db"_s).lastModified());
     }
 
     void refreshDownloadsSyncDb() {

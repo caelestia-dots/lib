@@ -41,6 +41,36 @@ bool linkLocalDb(const QString& systemDbPath, const QString& dbPath) {
     return QFile::link(target, link);
 }
 
+bool seedFile(const QString& source, const QString& target) {
+    const QFileInfo sourceInfo(source);
+    const QFileInfo targetInfo(target);
+    if (!sourceInfo.exists() || (targetInfo.exists() && targetInfo.lastModified() >= sourceInfo.lastModified()))
+        return true;
+
+    QFile::remove(target);
+    if (!QFile::copy(source, target))
+        return false;
+
+    QFile copy(target);
+    return copy.open(QIODevice::ReadWrite) &&
+           copy.setFileTime(sourceInfo.lastModified(), QFileDevice::FileModificationTime);
+}
+
+void seedSyncDbs(const PacmanConf& conf, const QString& dbPath) {
+    const QDir system(QDir(conf.dbPath).filePath(u"sync"_s));
+    const QDir target(QDir(dbPath).filePath(u"sync"_s));
+    if (!QDir().mkpath(target.path()))
+        return;
+
+    for (const auto& repo : conf.repos) {
+        for (const auto& suffix : { u".db"_s, u".db.sig"_s }) {
+            const auto name = repo.name + suffix;
+            if (!seedFile(system.filePath(name), target.filePath(name)))
+                qCWarning(lcAlpm) << "Unable to seed" << name << "from" << system.path();
+        }
+    }
+}
+
 bool registerRepo(alpm_handle_t* handle, const Repo& repo) {
     auto* db = alpm_register_syncdb(handle, repo.name.toUtf8().constData(), repo.sigLevel);
     if (!db)
@@ -67,6 +97,7 @@ std::unique_ptr<AlpmHandle> AlpmHandle::open(const PacmanConf& conf) {
         qCWarning(lcAlpm) << "Unable to prepare database directory" << path;
         return nullptr;
     }
+    seedSyncDbs(conf, path);
 
     alpm_errno_t err{};
     auto* raw = alpm_initialize(conf.rootDir.toUtf8().constData(), path.toUtf8().constData(), &err);
