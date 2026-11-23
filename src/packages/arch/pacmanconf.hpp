@@ -20,6 +20,7 @@ struct Repo {
 struct PacmanConf {
     QString rootDir;
     QString dbPath;
+    QString gpgDir;
     QStringList architectures;
     QStringList ignorePkgs;
     QStringList ignoreGroups;

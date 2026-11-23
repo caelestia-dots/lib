@@ -135,6 +135,7 @@ std::optional<PacmanConf> readPacmanConf(const QString& configPath) {
         u"-v"_s,
         u"RootDir"_s,
         u"DBPath"_s,
+        u"GPGDir"_s,
         u"Architecture"_s,
         u"SigLevel"_s,
         u"IgnorePkg"_s,
@@ -148,6 +149,7 @@ std::optional<PacmanConf> readPacmanConf(const QString& configPath) {
     PacmanConf conf;
     conf.rootDir = value(*options, u"RootDir");
     conf.dbPath = value(*options, u"DBPath");
+    conf.gpgDir = value(*options, u"GPGDir");
     conf.architectures = values(*options, u"Architecture");
     conf.ignorePkgs = values(*options, u"IgnorePkg");
     conf.ignoreGroups = values(*options, u"IgnoreGroup");

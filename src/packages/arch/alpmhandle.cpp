@@ -3,6 +3,7 @@
 #include <qdir.h>
 #include <qfile.h>
 #include <qfileinfo.h>
+#include <qlockfile.h>
 #include <qloggingcategory.h>
 
 #include <algorithm>
@@ -26,7 +27,7 @@ QString str(const char* value) {
 }
 
 bool linkLocalDb(const QString& systemDbPath, const QString& dbPath) {
-    const auto target = QDir(systemDbPath).filePath(u"local"_s);
+    const auto target = QDir::cleanPath(QDir(systemDbPath).filePath(u"local"_s));
     const auto link = QDir(dbPath).filePath(u"local"_s);
     if (!QFileInfo::exists(target)) {
         qCWarning(lcAlpm) << "Local database" << target << "does not exist";
@@ -108,6 +109,8 @@ std::unique_ptr<AlpmHandle> AlpmHandle::open(const PacmanConf& conf) {
 
     std::unique_ptr<AlpmHandle> handle(new AlpmHandle(raw));
     alpm_option_set_logfile(raw, QDir(path).filePath(u"alpm.log"_s).toUtf8().constData());
+    if (!conf.gpgDir.isEmpty())
+        alpm_option_set_gpgdir(raw, conf.gpgDir.toUtf8().constData());
     for (const auto& arch : conf.architectures)
         alpm_option_add_architecture(raw, arch.toUtf8().constData());
     for (const auto& pkg : conf.ignorePkgs)
@@ -141,6 +144,14 @@ alpm_db_t* AlpmHandle::syncDbFor(alpm_pkg_t* local) const {
 }
 
 bool AlpmHandle::refresh() {
+    const QDir dir(dbPath());
+    QLockFile lock(dir.filePath(u"refresh.lock"_s));
+    if (!lock.tryLock()) {
+        qCWarning(lcAlpm) << "Another refresh is in progress";
+        return false;
+    }
+
+    QFile::remove(dir.filePath(u"db.lck"_s));
     if (alpm_db_update(m_handle, alpm_get_syncdbs(m_handle), 0) < 0) {
         qCWarning(lcAlpm) << "Unable to refresh databases:" << error();
         return false;

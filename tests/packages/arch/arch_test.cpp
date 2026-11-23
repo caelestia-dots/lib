@@ -142,8 +142,12 @@ Server = file://%1/repo
     void refreshDownloadsSyncDb() {
         const auto* const backend = ArchBackend::create(this, confPath());
         QVERIFY(backend);
+        const auto staleLock = m_root.filePath(u"cache/caelestia/packages/alpm/db.lck"_s);
+        writeFile(staleLock, "12345\n");
+
         auto future = backend->updates(true);
         future.waitForFinished();
+        QVERIFY(!QFileInfo::exists(staleLock));
 
         const auto dbPath = m_root.filePath(u"cache/caelestia/packages/alpm"_s);
         QVERIFY(QFileInfo::exists(dbPath + u"/sync/test.db"_s));

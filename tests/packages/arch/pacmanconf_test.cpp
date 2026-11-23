@@ -36,10 +36,12 @@ private slots:
             QSKIP("pacman-conf not available");
 
         QVERIFY(QDir().mkpath(m_root.filePath(u"db"_s)));
+        QVERIFY(QDir().mkpath(m_root.filePath(u"gnupg"_s)));
         writeFile(m_root.filePath(u"mirrorlist"_s), "Server = https://example.org/$repo/os/$arch\n");
         writeFile(confPath(), QStringLiteral(R"([options]
 RootDir = %1
 DBPath = %1/db/
+GPGDir = %1/gnupg/
 Architecture = x86_64 x86_64_v3
 SigLevel = Required DatabaseOptional
 IgnorePkg = linux
@@ -80,6 +82,7 @@ Server = file://%1/custom
         const auto conf = load();
         QCOMPARE(conf.rootDir, m_root.path());
         QCOMPARE(conf.dbPath, m_root.path() + u"/db"_s);
+        QCOMPARE(conf.gpgDir, m_root.path() + u"/gnupg"_s);
         QCOMPARE(conf.architectures, (QStringList{ u"x86_64"_s, u"x86_64_v3"_s }));
         QCOMPARE(conf.ignorePkgs, (QStringList{ u"linux"_s, u"firefox"_s }));
         QCOMPARE(conf.parallelDownloads, 3);
