@@ -1,9 +1,12 @@
 #include <qdir.h>
+#include <qfileinfo.h>
 #include <qsignalspy.h>
 #include <qtemporarydir.h>
 #include <qtest.h>
 
 #include <sys/stat.h>
+
+#include <memory>
 
 #include "common.hpp"
 #include "processtransaction.hpp"
@@ -45,46 +48,55 @@ private slots:
     }
 
     void streamsMergedOutputAndSucceeds() {
-        const auto* transaction = new ProcessTransaction(m_program, {}, env(u"0"_s), this);
-        const QSignalSpy lines(transaction, &Transaction::outputLine);
-        QSignalSpy finished(transaction, &Transaction::finished);
+        const ProcessTransaction transaction(m_program, {}, env(u"0"_s));
+        const QSignalSpy lines(&transaction, &Transaction::outputLine);
+        QSignalSpy finished(&transaction, &Transaction::finished);
 
-        QVERIFY(transaction->running());
+        QVERIFY(transaction.running());
         QVERIFY(finished.wait());
-        QVERIFY(!transaction->running());
-        QVERIFY(transaction->succeeded());
+        QVERIFY(!transaction.running());
+        QVERIFY(transaction.succeeded());
         QCOMPARE(finished.first().first().toBool(), true);
-        QCOMPARE(transaction->output(), (QStringList{ u"line one"_s, u"line two"_s, u"no newline"_s }));
+        QCOMPARE(transaction.output(), (QStringList{ u"line one"_s, u"line two"_s, u"no newline"_s }));
         QCOMPARE(lines.size(), 3);
     }
 
     void reportsNonZeroExit() {
-        const auto* transaction = new ProcessTransaction(m_program, {}, env(u"3"_s), this);
-        QSignalSpy finished(transaction, &Transaction::finished);
+        const ProcessTransaction transaction(m_program, {}, env(u"3"_s));
+        QSignalSpy finished(&transaction, &Transaction::finished);
         QVERIFY(finished.wait());
-        QVERIFY(!transaction->succeeded());
-        QCOMPARE(transaction->output().size(), 3);
+        QVERIFY(!transaction.succeeded());
+        QCOMPARE(transaction.output().size(), 3);
     }
 
     void reportsMissingProgram() {
-        const auto* transaction = new ProcessTransaction(m_root.filePath(u"missing"_s), {}, env(u"0"_s), this);
-        QSignalSpy finished(transaction, &Transaction::finished);
+        const ProcessTransaction transaction(m_root.filePath(u"missing"_s), {}, env(u"0"_s));
+        QSignalSpy finished(&transaction, &Transaction::finished);
         QVERIFY(finished.wait());
-        QVERIFY(!transaction->succeeded());
-        QVERIFY(!transaction->output().isEmpty());
+        QVERIFY(!transaction.succeeded());
+        QVERIFY(!transaction.output().isEmpty());
     }
 
     void cancelTerminatesProcess() {
-        auto* transaction = new ProcessTransaction(u"sleep"_s, { u"30"_s }, env(u"0"_s), this);
-        QSignalSpy finished(transaction, &Transaction::finished);
-        transaction->cancel();
+        ProcessTransaction transaction(u"sleep"_s, { u"30"_s }, env(u"0"_s));
+        QSignalSpy finished(&transaction, &Transaction::finished);
+        transaction.cancel();
         QVERIFY(finished.wait());
-        QVERIFY(!transaction->succeeded());
+        QVERIFY(!transaction.succeeded());
+    }
+
+    void destroyingDetachesRunningProcess() {
+        const auto marker = m_root.filePath(u"detached"_s);
+        auto transaction = std::make_unique<ProcessTransaction>(
+            u"sh"_s, QStringList{ u"-c"_s, u"sleep 0.2; touch "_s + marker }, env(u"0"_s));
+        QVERIFY(transaction->running());
+        transaction.reset();
+        QTRY_VERIFY_WITH_TIMEOUT(QFileInfo::exists(marker), 5000);
     }
 
     void failedFinishesAsynchronously() {
-        const auto* transaction = Transaction::failed(u"nope"_s, this);
-        QSignalSpy finished(transaction, &Transaction::finished);
+        const auto transaction = Transaction::failed(u"nope"_s);
+        QSignalSpy finished(transaction.get(), &Transaction::finished);
         QVERIFY(transaction->running());
         QVERIFY(finished.wait());
         QVERIFY(!transaction->succeeded());

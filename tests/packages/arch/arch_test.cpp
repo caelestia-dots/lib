@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 
 #include <functional>
+#include <memory>
 
 #include "archbackend.hpp"
 #include "common.hpp"
@@ -186,20 +187,20 @@ Server = file://%1/repo
     void rejectsInvalidNames() {
         const auto* const backend = ArchBackend::create(this, confPath());
         QVERIFY(backend);
-        const std::function<Transaction*()> starters[] = {
+        const std::function<std::unique_ptr<Transaction>()> starters[] = {
             [&] {
-                return backend->install({}, this);
+                return backend->install({});
             },
             [&] {
-                return backend->install({ u"--config=/tmp/x"_s }, this);
+                return backend->install({ u"--config=/tmp/x"_s });
             },
             [&] {
-                return backend->remove({ u"foo"_s, u"-u"_s }, this);
+                return backend->remove({ u"foo"_s, u"-u"_s });
             },
         };
         for (const auto& start : starters) {
-            const auto* const transaction = start();
-            QSignalSpy finished(transaction, &Transaction::finished);
+            const auto transaction = start();
+            QSignalSpy finished(transaction.get(), &Transaction::finished);
             QVERIFY(finished.wait());
             QVERIFY(!transaction->succeeded());
         }
@@ -208,8 +209,8 @@ Server = file://%1/repo
     void installRunsHelper() {
         const auto* const backend = ArchBackend::create(this, confPath());
         QVERIFY(backend);
-        const auto* const transaction = backend->install({ u"foo"_s }, this);
-        QSignalSpy finished(transaction, &Transaction::finished);
+        const auto transaction = backend->install({ u"foo"_s });
+        QSignalSpy finished(transaction.get(), &Transaction::finished);
         QVERIFY(finished.wait());
         QVERIFY(transaction->succeeded());
         QVERIFY(transaction->output().join(u' ').endsWith(u"--skipreview -S -- foo"_s));

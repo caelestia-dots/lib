@@ -4,16 +4,13 @@
 
 namespace caelestia::packages {
 
-Transaction::Transaction(QObject* parent)
-    : QObject(parent) {}
-
-Transaction* Transaction::failed(const QString& reason, QObject* parent) {
-    auto* transaction = new Transaction(parent);
+std::unique_ptr<Transaction> Transaction::failed(const QString& reason) {
+    auto transaction = std::make_unique<Transaction>();
     transaction->append(reason);
     QMetaObject::invokeMethod(
-        transaction,
-        [transaction] {
-            transaction->finish(false);
+        transaction.get(),
+        [raw = transaction.get()] {
+            raw->finish(false);
         },
         Qt::QueuedConnection);
     return transaction;

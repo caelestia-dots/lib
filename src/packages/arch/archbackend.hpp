@@ -20,9 +20,9 @@ public:
     [[nodiscard]] QFuture<QList<Package>> installed() const override;
     [[nodiscard]] QFuture<QList<Update>> updates(bool refresh) const override;
 
-    [[nodiscard]] Transaction* upgrade(QObject* parent = nullptr) const override;
-    [[nodiscard]] Transaction* install(const QStringList& names, QObject* parent = nullptr) const override;
-    [[nodiscard]] Transaction* remove(const QStringList& names, QObject* parent = nullptr) const override;
+    [[nodiscard]] std::unique_ptr<Transaction> upgrade() const override;
+    [[nodiscard]] std::unique_ptr<Transaction> install(const QStringList& names) const override;
+    [[nodiscard]] std::unique_ptr<Transaction> remove(const QStringList& names) const override;
 
 private:
     ArchBackend(QString configPath, std::optional<AurHelper> helper, QObject* parent);

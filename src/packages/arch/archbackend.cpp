@@ -21,19 +21,19 @@ std::unique_ptr<AlpmHandle> openHandle(const QString& configPath) {
     return conf ? AlpmHandle::open(*conf) : nullptr;
 }
 
-Transaction* run(const Command& command, QObject* parent) {
-    return new ProcessTransaction(command.program, command.arguments, transactionEnvironment(), parent);
+std::unique_ptr<Transaction> run(const Command& command) {
+    return std::make_unique<ProcessTransaction>(command.program, command.arguments, transactionEnvironment());
 }
 
-Transaction* runOnPackages(
-    std::optional<AurHelper> helper, const QString& operation, const QStringList& names, QObject* parent) {
+std::unique_ptr<Transaction> runOnPackages(
+    std::optional<AurHelper> helper, const QString& operation, const QStringList& names) {
     if (names.isEmpty())
-        return Transaction::failed(u"No packages given"_s, parent);
+        return Transaction::failed(u"No packages given"_s);
     for (const auto& name : names) {
         if (!isPackageName(name))
-            return Transaction::failed(u"Invalid package name: "_s + name, parent);
+            return Transaction::failed(u"Invalid package name: "_s + name);
     }
-    return run(command(helper, QStringList{ operation, u"--"_s } + names), parent);
+    return run(command(helper, QStringList{ operation, u"--"_s } + names));
 }
 
 } // namespace
@@ -89,16 +89,16 @@ QFuture<QList<Update>> ArchBackend::updates(bool refresh) const {
         });
 }
 
-Transaction* ArchBackend::upgrade(QObject* parent) const {
-    return run(command(m_helper, { u"-Syu"_s }), parent);
+std::unique_ptr<Transaction> ArchBackend::upgrade() const {
+    return run(command(m_helper, { u"-Syu"_s }));
 }
 
-Transaction* ArchBackend::install(const QStringList& names, QObject* parent) const {
-    return runOnPackages(m_helper, u"-S"_s, names, parent);
+std::unique_ptr<Transaction> ArchBackend::install(const QStringList& names) const {
+    return runOnPackages(m_helper, u"-S"_s, names);
 }
 
-Transaction* ArchBackend::remove(const QStringList& names, QObject* parent) const {
-    return runOnPackages(m_helper, u"-Rns"_s, names, parent);
+std::unique_ptr<Transaction> ArchBackend::remove(const QStringList& names) const {
+    return runOnPackages(m_helper, u"-Rns"_s, names);
 }
 
 } // namespace caelestia::packages

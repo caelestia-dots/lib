@@ -7,6 +7,8 @@
 #include <qstringlist.h>
 #include <qtypes.h>
 
+#include <memory>
+
 namespace caelestia::packages {
 
 enum class Capability : quint8 {
@@ -39,9 +41,9 @@ class Transaction : public QObject {
     Q_OBJECT
 
 public:
-    explicit Transaction(QObject* parent = nullptr);
+    Transaction() = default;
 
-    [[nodiscard]] static Transaction* failed(const QString& reason, QObject* parent = nullptr);
+    [[nodiscard]] static std::unique_ptr<Transaction> failed(const QString& reason);
 
     [[nodiscard]] bool running() const;
     [[nodiscard]] bool succeeded() const;
@@ -74,9 +76,9 @@ public:
     [[nodiscard]] virtual QFuture<QList<Package>> installed() const = 0;
     [[nodiscard]] virtual QFuture<QList<Update>> updates(bool refresh) const = 0;
 
-    [[nodiscard]] virtual Transaction* upgrade(QObject* parent = nullptr) const = 0;
-    [[nodiscard]] virtual Transaction* install(const QStringList& names, QObject* parent = nullptr) const = 0;
-    [[nodiscard]] virtual Transaction* remove(const QStringList& names, QObject* parent = nullptr) const = 0;
+    [[nodiscard]] virtual std::unique_ptr<Transaction> upgrade() const = 0;
+    [[nodiscard]] virtual std::unique_ptr<Transaction> install(const QStringList& names) const = 0;
+    [[nodiscard]] virtual std::unique_ptr<Transaction> remove(const QStringList& names) const = 0;
 };
 
 [[nodiscard]] QList<Backend*> backends(QObject* parent = nullptr);
