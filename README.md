@@ -9,6 +9,7 @@ A shared C++ library for [Caelestia](https://github.com/caelestia-dots).
 | `config`     | Basic access to `~/.config/caelestia/config.json` + paths |
 | `ipc`        | CLI to shell requests over a local socket + QML module    |
 | `media`      | Image/video colour analysis                               |
+| `packages`   | Multi-backend package management                          |
 | `record`     | Screen recorder lifecycle and state                       |
 | `scheme`     | Material 3 scheme generation                              |
 | `screenshot` | Wayland screen capture via ext-image-copy-capture         |
@@ -22,6 +23,7 @@ A shared C++ library for [Caelestia](https://github.com/caelestia-dots).
 - [ffmpeg](https://github.com/ffmpeg/ffmpeg)
 - [wayland](https://gitlab.freedesktop.org/wayland/wayland) (wayland-client + wayland-scanner)
 - [wayland-protocols](https://gitlab.freedesktop.org/wayland/wayland-protocols) >= 1.37
+- [pacman](https://gitlab.archlinux.org/pacman/pacman) (libalpm, optional)
 
 ## Installation
 
