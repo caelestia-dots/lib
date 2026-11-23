@@ -25,13 +25,20 @@ struct Command {
     bool operator==(const Command&) const = default;
 };
 
+struct AurQueryResult {
+    QList<Update> updates;
+    QString error;
+
+    [[nodiscard]] bool ok() const { return error.isEmpty(); }
+};
+
 class AurUpdateQuery {
 public:
     Q_DISABLE_COPY_MOVE(AurUpdateQuery)
     explicit AurUpdateQuery(AurHelper helper);
     ~AurUpdateQuery() = default;
 
-    [[nodiscard]] std::optional<QList<Update>> finish();
+    [[nodiscard]] AurQueryResult finish();
 
 private:
     QProcess m_process;

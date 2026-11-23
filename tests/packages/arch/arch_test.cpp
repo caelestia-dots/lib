@@ -11,6 +11,7 @@
 
 #include <functional>
 #include <memory>
+#include <stdexcept>
 
 #include "archbackend.hpp"
 #include "common.hpp"
@@ -22,6 +23,7 @@ namespace {
 
 constexpr auto k_fakeParu = R"(#!/bin/sh
 if [ "$1" = "-Qua" ]; then
+    [ -n "$FAKE_AUR_FAIL" ] && { echo "aur down" >&2; exit 2; }
     echo ":: Checking AUR"
     echo "baz 1.0-1 -> 1.1-1"
 else
@@ -130,10 +132,11 @@ Server = file://%1/repo
         auto future = backend->updates(false);
         future.waitForFinished();
 
-        const auto updates = future.result();
-        QCOMPARE(updates.size(), 1);
-        QCOMPARE(updates[0].package.name, u"foo"_s);
-        QCOMPARE(updates[0].newVersion, u"1.5-1"_s);
+        const auto check = future.result();
+        QVERIFY(check.warnings.isEmpty());
+        QCOMPARE(check.updates.size(), 1);
+        QCOMPARE(check.updates[0].package.name, u"foo"_s);
+        QCOMPARE(check.updates[0].newVersion, u"1.5-1"_s);
 
         const QFileInfo seeded(m_root.filePath(u"cache/caelestia/packages/alpm/sync/test.db"_s));
         QVERIFY(seeded.exists());
@@ -148,6 +151,7 @@ Server = file://%1/repo
 
         auto future = backend->updates(true);
         future.waitForFinished();
+        QVERIFY(future.result().warnings.isEmpty());
         QVERIFY(!QFileInfo::exists(staleLock));
 
         const auto dbPath = m_root.filePath(u"cache/caelestia/packages/alpm"_s);
@@ -163,12 +167,50 @@ Server = file://%1/repo
         future.waitForFinished();
         QCOMPARE(readFile(m_root.filePath(u"paru.log"_s)).count(u"-Qua"_s), 1);
 
-        const auto updates = future.result();
+        const auto updates = future.result().updates;
         QCOMPARE(updates.size(), 2);
         QCOMPARE(updates[0], (Update{ .package = { .name = u"foo"_s, .version = u"1.0-1"_s, .source = u"test"_s },
                                  .newVersion = u"2.0-1"_s }));
         QCOMPARE(updates[1], (Update{ .package = { .name = u"baz"_s, .version = u"1.0-1"_s, .source = u"aur"_s },
                                  .newVersion = u"1.1-1"_s }));
+    }
+
+    void failedAurQueryWarnsAndKeepsCache() {
+        const auto* const backend = ArchBackend::create(this, confPath());
+        QVERIFY(backend);
+        qputenv("FAKE_AUR_FAIL", "1");
+        auto future = backend->updates(true);
+        future.waitForFinished();
+        qunsetenv("FAKE_AUR_FAIL");
+
+        const auto check = future.result();
+        QCOMPARE(check.warnings.size(), 1);
+        QVERIFY(check.warnings[0].contains(u"aur down"_s));
+        QCOMPARE(check.updates.size(), 2);
+        QCOMPARE(check.updates[1].package.name, u"baz"_s);
+    }
+
+    void failedRefreshWarnsAndKeepsDbs() {
+        const auto badConf = m_root.filePath(u"bad.conf"_s);
+        writeFile(badConf, readFile(confPath()).replace(u"/repo"_s, u"/missing"_s).toUtf8());
+        const auto* const backend = ArchBackend::create(this, badConf);
+        QVERIFY(backend);
+        auto future = backend->updates(true);
+        future.waitForFinished();
+
+        const auto check = future.result();
+        QCOMPARE(check.warnings.size(), 1);
+        QVERIFY(check.warnings[0].startsWith(u"Unable to refresh databases"_s));
+        QCOMPARE(check.updates[0].newVersion, u"2.0-1"_s);
+    }
+
+    void unusableConfigFailsFuture() {
+        const auto brokenConf = m_root.filePath(u"broken.conf"_s);
+        writeFile(brokenConf, "[options]\nDBPath = /nonexistent/path\n");
+        const auto* const backend = ArchBackend::create(this, brokenConf);
+        QVERIFY(backend);
+        auto future = backend->installed();
+        QVERIFY_THROWS_EXCEPTION(std::runtime_error, future.waitForFinished());
     }
 
     void installedListsSources() {

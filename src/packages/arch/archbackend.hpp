@@ -18,7 +18,7 @@ public:
     [[nodiscard]] QString name() const override;
     [[nodiscard]] Capabilities capabilities() const override;
     [[nodiscard]] QFuture<QList<Package>> installed() const override;
-    [[nodiscard]] QFuture<QList<Update>> updates(bool refresh) const override;
+    [[nodiscard]] QFuture<UpdateCheck> updates(bool refresh) const override;
 
     [[nodiscard]] std::unique_ptr<Transaction> upgrade() const override;
     [[nodiscard]] std::unique_ptr<Transaction> install(const QStringList& names) const override;

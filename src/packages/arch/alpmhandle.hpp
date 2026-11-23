@@ -7,6 +7,7 @@
 #include <alpm.h>
 
 #include <memory>
+#include <optional>
 
 #include "caelestia/packages/packages.hpp"
 #include "pacmanconf.hpp"
@@ -20,7 +21,7 @@ public:
 
     [[nodiscard]] static std::unique_ptr<AlpmHandle> open(const PacmanConf& conf);
 
-    bool refresh();
+    [[nodiscard]] std::optional<QString> refresh(); // Error message on failure
     [[nodiscard]] QList<Package> installed() const;
     [[nodiscard]] QList<Update> updates() const;
 

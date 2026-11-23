@@ -61,13 +61,23 @@ AurUpdateQuery::AurUpdateQuery(AurHelper helper) {
     m_process.start(programName(helper), { u"-Qua"_s, u"--color"_s, u"never"_s });
 }
 
-std::optional<QList<Update>> AurUpdateQuery::finish() {
+AurQueryResult AurUpdateQuery::finish() {
+    QString failure;
     if (!m_process.waitForFinished(k_queryTimeoutMs) || m_process.exitStatus() != QProcess::NormalExit) {
-        qCWarning(lcAurHelper) << "AUR update check failed:" << m_process.errorString()
-                               << m_process.readAllStandardError().trimmed();
-        return std::nullopt;
+        failure = m_process.errorString();
+    } else {
+        // Helpers exit with 1 when there are no updates
+        const auto stderr = QString::fromUtf8(m_process.readAllStandardError()).trimmed();
+        if (m_process.exitCode() > 1 || (m_process.exitCode() == 1 && !stderr.isEmpty()))
+            failure = stderr.isEmpty() ? m_process.errorString() : stderr;
     }
-    return parseAurUpdates(QString::fromUtf8(m_process.readAllStandardOutput()));
+
+    if (failure.isEmpty())
+        return { .updates = parseAurUpdates(QString::fromUtf8(m_process.readAllStandardOutput())), .error = {} };
+
+    const auto error = u"AUR update check failed: "_s + failure;
+    qCWarning(lcAurHelper).noquote() << error;
+    return { .updates = {}, .error = error };
 }
 
 std::optional<AurHelper> findAurHelper() {

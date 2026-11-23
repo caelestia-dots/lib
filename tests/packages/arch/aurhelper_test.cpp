@@ -130,14 +130,33 @@ private slots:
             QDir(binDir()).filePath(u"paru"_s), "#!/bin/sh\n[ \"$1\" = -Qua ] || exit 1\necho 'baz 1.0-1 -> 1.1-1'\n");
         QVERIFY(::chmod(QDir(binDir()).filePath(u"paru"_s).toUtf8().constData(), 0755) == 0);
         AurUpdateQuery query(AurHelper::Paru);
-        const auto updates = query.finish().value_or(QList<Update>());
-        QCOMPARE(updates.size(), 1);
-        QCOMPARE(updates.first().package.name, u"baz"_s);
+        const auto result = query.finish();
+        QVERIFY2(result.ok(), qPrintable(result.error));
+        QCOMPARE(result.updates.size(), 1);
+        QCOMPARE(result.updates.first().package.name, u"baz"_s);
     }
 
     void failedQueryHasNoResult() {
         AurUpdateQuery query(AurHelper::Yay);
-        QVERIFY(!query.finish());
+        QVERIFY(!query.finish().ok());
+    }
+
+    void noUpdatesExitCodeIsNotAnError() {
+        writeFile(QDir(binDir()).filePath(u"yay"_s), "#!/bin/sh\nexit 1\n");
+        QVERIFY(::chmod(QDir(binDir()).filePath(u"yay"_s).toUtf8().constData(), 0755) == 0);
+        AurUpdateQuery query(AurHelper::Yay);
+        const auto result = query.finish();
+        QVERIFY2(result.ok(), qPrintable(result.error));
+        QVERIFY(result.updates.isEmpty());
+    }
+
+    void stderrWithExitOneIsAnError() {
+        writeFile(QDir(binDir()).filePath(u"yay"_s), "#!/bin/sh\necho 'network down' >&2\nexit 1\n");
+        QVERIFY(::chmod(QDir(binDir()).filePath(u"yay"_s).toUtf8().constData(), 0755) == 0);
+        AurUpdateQuery query(AurHelper::Yay);
+        const auto result = query.finish();
+        QVERIFY(!result.ok());
+        QVERIFY(result.error.contains(u"network down"_s));
     }
 
     void cacheRoundTrips() {

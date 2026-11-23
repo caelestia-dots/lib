@@ -37,6 +37,13 @@ struct Update {
     bool operator==(const Update&) const = default;
 };
 
+struct UpdateCheck {
+    QList<Update> updates;
+    QStringList warnings; // Non-fatal problems, e.g. a failed refresh; updates may be stale
+
+    bool operator==(const UpdateCheck&) const = default;
+};
+
 class Transaction : public QObject {
     Q_OBJECT
 
@@ -73,8 +80,9 @@ public:
 
     [[nodiscard]] virtual QString name() const = 0;
     [[nodiscard]] virtual Capabilities capabilities() const = 0;
+    // Futures fail with std::runtime_error when the backend cannot be used at all
     [[nodiscard]] virtual QFuture<QList<Package>> installed() const = 0;
-    [[nodiscard]] virtual QFuture<QList<Update>> updates(bool refresh) const = 0;
+    [[nodiscard]] virtual QFuture<UpdateCheck> updates(bool refresh) const = 0;
 
     [[nodiscard]] virtual std::unique_ptr<Transaction> upgrade() const = 0;
     [[nodiscard]] virtual std::unique_ptr<Transaction> install(const QStringList& names) const = 0;

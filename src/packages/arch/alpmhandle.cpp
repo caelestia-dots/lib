@@ -143,20 +143,22 @@ alpm_db_t* AlpmHandle::syncDbFor(alpm_pkg_t* local) const {
     return nullptr;
 }
 
-bool AlpmHandle::refresh() {
+std::optional<QString> AlpmHandle::refresh() {
     const QDir dir(dbPath());
     QLockFile lock(dir.filePath(u"refresh.lock"_s));
+    QString failure;
     if (!lock.tryLock()) {
-        qCWarning(lcAlpm) << "Another refresh is in progress";
-        return false;
+        failure = u"Another refresh is in progress"_s;
+    } else {
+        QFile::remove(dir.filePath(u"db.lck"_s));
+        if (alpm_db_update(m_handle, alpm_get_syncdbs(m_handle), 0) < 0)
+            failure = u"Unable to refresh databases: "_s + error();
     }
 
-    QFile::remove(dir.filePath(u"db.lck"_s));
-    if (alpm_db_update(m_handle, alpm_get_syncdbs(m_handle), 0) < 0) {
-        qCWarning(lcAlpm) << "Unable to refresh databases:" << error();
-        return false;
-    }
-    return true;
+    if (failure.isEmpty())
+        return std::nullopt;
+    qCWarning(lcAlpm).noquote() << failure;
+    return failure;
 }
 
 QList<Package> AlpmHandle::installed() const {

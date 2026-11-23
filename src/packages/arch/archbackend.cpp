@@ -4,6 +4,8 @@
 #include <qfuture.h>
 #include <qstandardpaths.h>
 
+#include <stdexcept>
+
 #include "../processtransaction.hpp"
 #include "alpmhandle.hpp"
 #include "pacmanconf.hpp"
@@ -18,7 +20,13 @@ constexpr QStringView k_defaultConfig = u"/etc/pacman.conf";
 
 std::unique_ptr<AlpmHandle> openHandle(const QString& configPath) {
     const auto conf = readPacmanConf(configPath);
-    return conf ? AlpmHandle::open(*conf) : nullptr;
+    if (!conf)
+        throw std::runtime_error("Unable to read pacman configuration");
+
+    auto handle = AlpmHandle::open(*conf);
+    if (!handle)
+        throw std::runtime_error("Unable to open package databases");
+    return handle;
 }
 
 std::unique_ptr<Transaction> run(const Command& command) {
@@ -64,28 +72,34 @@ Capabilities ArchBackend::capabilities() const {
 
 QFuture<QList<Package>> ArchBackend::installed() const {
     return QtFuture::makeReadyVoidFuture().then(QtFuture::Launch::Async, [config = m_configPath] {
-        const auto handle = openHandle(config);
-        return handle ? handle->installed() : QList<Package>();
+        return openHandle(config)->installed();
     });
 }
 
-QFuture<QList<Update>> ArchBackend::updates(bool refresh) const {
+QFuture<UpdateCheck> ArchBackend::updates(bool refresh) const {
     return QtFuture::makeReadyVoidFuture().then(
         QtFuture::Launch::Async, [config = m_configPath, helper = m_helper, refresh] {
             std::optional<AurUpdateQuery> aur;
             if (refresh && helper)
                 aur.emplace(*helper);
 
-            QList<Update> updates;
-            if (const auto handle = openHandle(config)) {
-                if (refresh)
-                    handle->refresh();
-                updates = handle->updates();
+            UpdateCheck check;
+            const auto handle = openHandle(config);
+            if (refresh) {
+                if (const auto error = handle->refresh())
+                    check.warnings.append(*error);
             }
+            check.updates = handle->updates();
 
-            if (const auto fresh = aur ? aur->finish() : std::nullopt)
-                cacheAurUpdates(*fresh);
-            return updates + cachedAurUpdates();
+            if (aur) {
+                const auto result = aur->finish();
+                if (result.ok())
+                    cacheAurUpdates(result.updates);
+                else
+                    check.warnings.append(result.error);
+            }
+            check.updates += cachedAurUpdates();
+            return check;
         });
 }
 
