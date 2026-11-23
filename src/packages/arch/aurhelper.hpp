@@ -31,7 +31,7 @@ public:
     explicit AurUpdateQuery(AurHelper helper);
     ~AurUpdateQuery() = default;
 
-    [[nodiscard]] QList<Update> finish();
+    [[nodiscard]] std::optional<QList<Update>> finish();
 
 private:
     QProcess m_process;
@@ -42,5 +42,8 @@ private:
 [[nodiscard]] QProcessEnvironment transactionEnvironment();
 [[nodiscard]] Command command(std::optional<AurHelper> helper, const QStringList& operation);
 [[nodiscard]] QList<Update> parseAurUpdates(const QString& output);
+
+[[nodiscard]] QList<Update> cachedAurUpdates();
+void cacheAurUpdates(const QList<Update>& updates);
 
 } // namespace caelestia::packages

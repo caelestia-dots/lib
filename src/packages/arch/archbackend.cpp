@@ -73,7 +73,7 @@ QFuture<QList<Update>> ArchBackend::updates(bool refresh) const {
     return QtFuture::makeReadyVoidFuture().then(
         QtFuture::Launch::Async, [config = m_configPath, helper = m_helper, refresh] {
             std::optional<AurUpdateQuery> aur;
-            if (helper)
+            if (refresh && helper)
                 aur.emplace(*helper);
 
             QList<Update> updates;
@@ -83,9 +83,9 @@ QFuture<QList<Update>> ArchBackend::updates(bool refresh) const {
                 updates = handle->updates();
             }
 
-            if (aur)
-                updates += aur->finish();
-            return updates;
+            if (const auto fresh = aur ? aur->finish() : std::nullopt)
+                cacheAurUpdates(*fresh);
+            return updates + cachedAurUpdates();
         });
 }
 

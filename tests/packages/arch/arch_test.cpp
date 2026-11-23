@@ -25,6 +25,7 @@ if [ "$1" = "-Qua" ]; then
 else
     echo "$*"
 fi
+echo "$1" >> "$FAKE_LOG"
 )";
 
 QByteArray desc(const QString& name, const QString& version) {
@@ -71,6 +72,7 @@ private slots:
             QSKIP("pacman-conf or tar not available");
 
         qputenv("XDG_CACHE_HOME", m_root.filePath(u"cache"_s).toUtf8());
+        qputenv("FAKE_LOG", m_root.filePath(u"paru.log"_s).toUtf8());
 
         const auto bin = m_root.filePath(u"bin"_s);
         writeFile(bin + u"/paru"_s, k_fakeParu);
@@ -129,8 +131,10 @@ Server = file://%1/repo
     void updatesMergeRepoAndAur() {
         const auto* const backend = ArchBackend::create(this, confPath());
         QVERIFY(backend);
+        QCOMPARE(readFile(m_root.filePath(u"paru.log"_s)).count(u"-Qua"_s), 1);
         auto future = backend->updates(false);
         future.waitForFinished();
+        QCOMPARE(readFile(m_root.filePath(u"paru.log"_s)).count(u"-Qua"_s), 1);
 
         const auto updates = future.result();
         QCOMPARE(updates.size(), 2);

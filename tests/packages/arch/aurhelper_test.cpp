@@ -30,6 +30,7 @@ private slots:
     void initTestCase() {
         QVERIFY(m_root.isValid());
         qputenv("PATH", binDir().toUtf8());
+        qputenv("XDG_CACHE_HOME", m_root.filePath(u"cache"_s).toUtf8());
         QVERIFY(QDir().mkpath(binDir()));
     }
 
@@ -129,9 +130,26 @@ private slots:
             QDir(binDir()).filePath(u"paru"_s), "#!/bin/sh\n[ \"$1\" = -Qua ] || exit 1\necho 'baz 1.0-1 -> 1.1-1'\n");
         QVERIFY(::chmod(QDir(binDir()).filePath(u"paru"_s).toUtf8().constData(), 0755) == 0);
         AurUpdateQuery query(AurHelper::Paru);
-        const auto updates = query.finish();
+        const auto updates = query.finish().value_or(QList<Update>());
         QCOMPARE(updates.size(), 1);
-        QCOMPARE(updates[0].package.name, u"baz"_s);
+        QCOMPARE(updates.first().package.name, u"baz"_s);
+    }
+
+    void failedQueryHasNoResult() {
+        AurUpdateQuery query(AurHelper::Yay);
+        QVERIFY(!query.finish());
+    }
+
+    void cacheRoundTrips() {
+        QVERIFY(cachedAurUpdates().isEmpty());
+        const QList<Update> updates{
+            { .package = { .name = u"foo"_s, .version = u"1-1"_s, .source = u"aur"_s }, .newVersion = u"2-1"_s },
+            { .package = { .name = u"bar"_s, .version = u"3"_s, .source = u"aur"_s }, .newVersion = u"4"_s },
+        };
+        cacheAurUpdates(updates);
+        QCOMPARE(cachedAurUpdates(), updates);
+        cacheAurUpdates({});
+        QVERIFY(cachedAurUpdates().isEmpty());
     }
 };
 

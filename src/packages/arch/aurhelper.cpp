@@ -1,8 +1,17 @@
 #include "aurhelper.hpp"
 
+#include <qdir.h>
+#include <qfile.h>
+#include <qfileinfo.h>
+#include <qjsonarray.h>
+#include <qjsondocument.h>
+#include <qjsonobject.h>
 #include <qloggingcategory.h>
 #include <qregularexpression.h>
+#include <qsavefile.h>
 #include <qstandardpaths.h>
+
+#include "caelestia/utils/cache.hpp"
 
 namespace caelestia::packages {
 
@@ -15,6 +24,10 @@ Q_LOGGING_CATEGORY(lcAurHelper, "caelestia.packages.aur", QtInfoMsg)
 constexpr QStringView k_pkexec = u"/usr/bin/pkexec";
 constexpr QStringView k_pacman = u"/usr/bin/pacman";
 constexpr int k_queryTimeoutMs = 120000;
+
+QString cachePath() {
+    return utils::Cache::cacheDir() + u"/packages/aur.json"_s;
+}
 
 QString programName(AurHelper helper) {
     switch (helper) {
@@ -48,10 +61,11 @@ AurUpdateQuery::AurUpdateQuery(AurHelper helper) {
     m_process.start(programName(helper), { u"-Qua"_s, u"--color"_s, u"never"_s });
 }
 
-QList<Update> AurUpdateQuery::finish() {
+std::optional<QList<Update>> AurUpdateQuery::finish() {
     if (!m_process.waitForFinished(k_queryTimeoutMs) || m_process.exitStatus() != QProcess::NormalExit) {
-        qCWarning(lcAurHelper) << "AUR update check failed:" << m_process.readAllStandardError().trimmed();
-        return {};
+        qCWarning(lcAurHelper) << "AUR update check failed:" << m_process.errorString()
+                               << m_process.readAllStandardError().trimmed();
+        return std::nullopt;
     }
     return parseAurUpdates(QString::fromUtf8(m_process.readAllStandardOutput()));
 }
@@ -102,6 +116,49 @@ QList<Update> parseAurUpdates(const QString& output) {
         };
     }
     return updates;
+}
+
+QList<Update> cachedAurUpdates() {
+    QFile file(cachePath());
+    if (!file.open(QIODevice::ReadOnly))
+        return {};
+
+    QList<Update> updates;
+    const auto entries = QJsonDocument::fromJson(file.readAll()).array();
+    for (const auto& entry : entries) {
+        const auto object = entry.toObject();
+        updates << Update{
+            .package = {
+                .name = object.value(u"name"_s).toString(),
+                .version = object.value(u"version"_s).toString(),
+                .source = u"aur"_s,
+            },
+            .newVersion = object.value(u"newVersion"_s).toString(),
+        };
+    }
+    return updates;
+}
+
+void cacheAurUpdates(const QList<Update>& updates) {
+    QJsonArray entries;
+    for (const auto& update : updates) {
+        entries << QJsonObject{
+            { u"name"_s, update.package.name },
+            { u"version"_s, update.package.version },
+            { u"newVersion"_s, update.newVersion },
+        };
+    }
+
+    const auto path = cachePath();
+    QDir().mkpath(QFileInfo(path).absolutePath());
+    QSaveFile file(path);
+    if (!file.open(QIODevice::WriteOnly)) {
+        qCWarning(lcAurHelper) << "Unable to open" << path << file.errorString();
+        return;
+    }
+    file.write(QJsonDocument(entries).toJson(QJsonDocument::Compact));
+    if (!file.commit())
+        qCWarning(lcAurHelper) << "Unable to write" << path << file.errorString();
 }
 
 } // namespace caelestia::packages
