@@ -34,6 +34,7 @@ struct PersistedData {
     qint64 pid = 0;
     qint64 startTicks = 0;
     QString outputPath;
+    QString region;
     qint64 startedAt = 0;
     qint64 pausedSince = 0;
     qint64 pausedTotal = 0;
@@ -77,6 +78,7 @@ std::optional<PersistedData> load() {
         .pid = json.value(u"pid").toInteger(),
         .startTicks = json.value(u"startTicks").toInteger(),
         .outputPath = json.value(u"outputPath").toString(),
+        .region = json.value(u"region").toString(),
         .startedAt = json.value(u"startedAt").toInteger(),
         .pausedSince = json.value(u"pausedSince").toInteger(),
         .pausedTotal = json.value(u"pausedTotal").toInteger(),
@@ -102,6 +104,7 @@ bool save(const PersistedData& persisted) {
         { u"pid"_s, persisted.pid },
         { u"startTicks"_s, persisted.startTicks },
         { u"outputPath"_s, persisted.outputPath },
+        { u"region"_s, persisted.region },
         { u"startedAt"_s, persisted.startedAt },
         { u"pausedSince"_s, persisted.pausedSince },
         { u"pausedTotal"_s, persisted.pausedTotal },
@@ -195,6 +198,7 @@ State state() {
         .paused = persisted->pausedSince != 0,
         .pid = persisted->pid,
         .output = persisted->outputPath,
+        .region = persisted->region,
         .elapsedMs = current - persisted->startedAt - persisted->pausedTotal - pausedNow,
     };
 }
@@ -221,6 +225,7 @@ bool start(const Options& options) {
         .pid = pid,
         .startTicks = startTicks(pid).value_or(0),
         .outputPath = options.output,
+        .region = options.region,
         .startedAt = now(),
     });
 }

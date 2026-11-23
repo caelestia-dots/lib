@@ -121,6 +121,7 @@ private slots:
         QVERIFY(record::start(opts));
         QVERIFY(waitForLog(u"-o"_s));
         QCOMPARE(log(), u"-w region -region 300x200+10+20 -o %1\n"_s.arg(m_output));
+        QCOMPARE(record::state().region, opts.region);
     }
 
     void startDefaultsToScreen() {

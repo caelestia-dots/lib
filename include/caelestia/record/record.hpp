@@ -22,6 +22,7 @@ struct State {
     bool paused = false;
     qint64 pid = 0;
     QString output;
+    QString region;
     qint64 elapsedMs = 0;
 
     bool operator==(const State&) const = default;
